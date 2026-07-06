@@ -1,0 +1,16 @@
+{
+  "symbol": "159920",
+  "lower_price": "1.000",
+  "upper_price": "1.200",
+  "grid_count": 8,
+  "per_grid_amount": "3000",
+  "capital_cap": "50000",
+  "spacing_mode": "arithmetic",
+  "base_build_mode": "center",
+  "upper_rebuild_ratio": "0",
+  "down_spacing_factor": "1.5",
+  "down_amount_factor": "1.2",
+  "fee": { "rate": "0.00005", "min_fee": "0.1" },
+  "lot_size": 100,
+  "price_tick": "0.001"
+}

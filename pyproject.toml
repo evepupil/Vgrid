@@ -18,6 +18,9 @@ dev = [
     "pytest-cov>=6.0",
 ]
 
+[project.scripts]
+vgrid = "vgrid.cli.app:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
