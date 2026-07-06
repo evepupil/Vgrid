@@ -95,6 +95,6 @@ class MootdxProvider:
 
     def _get_client(self) -> _MootdxClient:
         if self._client is None:
-            self._client = Quotes.factory(market="std", best=True, timeout=15)
+            self._client = Quotes.factory(market="std", timeout=15)
         assert self._client is not None
         return self._client
