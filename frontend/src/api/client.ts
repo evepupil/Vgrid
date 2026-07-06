@@ -79,6 +79,7 @@ export interface BacktestBody {
   end: string
   frame?: string
   config: StrategyConfig
+  symbol?: string
 }
 
 export async function runBacktest(body: BacktestBody): Promise<BacktestResult> {
@@ -136,6 +137,16 @@ export async function addWatch(
 
 export async function removeWatch(symbol: string): Promise<void> {
   await del(`/api/watchlist/${encodeURIComponent(symbol)}`)
+}
+
+// ETF 信息
+export interface EtfInfo {
+  symbol: string
+  name: string
+}
+
+export async function getEtfInfo(symbol: string): Promise<EtfInfo> {
+  return get<EtfInfo>(`/api/etf/${encodeURIComponent(symbol)}/info`)
 }
 
 // 单实例看盘

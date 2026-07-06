@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Backtest from './pages/Backtest'
 import Strategies from './pages/Strategies'
 import Runners from './pages/Runners'
+import Watchlist from './pages/Watchlist'
 
 const { Sider, Content } = Layout
 
@@ -12,6 +13,7 @@ const NAV = [
   { path: '/backtest', label: '回测' },
   { path: '/strategies', label: '策略库' },
   { path: '/runners', label: '模拟盘' },
+  { path: '/watchlist', label: '关注列表' },
 ] as const
 
 function App() {
@@ -25,13 +27,14 @@ function App() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={180}>
+      <Sider theme="dark" width={180} breakpoint="lg" collapsible>
         <div
           style={{
             color: '#fff',
             padding: '20px 16px',
             fontSize: '20px',
             fontWeight: 600,
+            letterSpacing: 1,
           }}
         >
           Vgrid
@@ -48,12 +51,15 @@ function App() {
       </Sider>
       <Layout>
         <Content style={{ padding: 24, background: '#f0f2f5' }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/backtest" element={<Backtest />} />
-            <Route path="/strategies" element={<Strategies />} />
-            <Route path="/runners" element={<Runners />} />
-          </Routes>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/backtest" element={<Backtest />} />
+              <Route path="/strategies" element={<Strategies />} />
+              <Route path="/runners" element={<Runners />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+            </Routes>
+          </div>
         </Content>
       </Layout>
     </Layout>

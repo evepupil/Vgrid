@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Line } from '@ant-design/charts'
 import {
+  AutoComplete,
   Button,
   Card,
   Col,
@@ -10,6 +11,7 @@ import {
   Space,
   Statistic,
   Table,
+  Tag,
   message,
 } from 'antd'
 import type { TableProps } from 'antd'
@@ -18,6 +20,7 @@ import { useState } from 'react'
 import {
   getStrategy,
   listStrategies,
+  listWatchlist,
   runBacktest,
   type BacktestResult,
   type Fill,
@@ -27,6 +30,8 @@ type Columns<T> = NonNullable<TableProps<T>['columns']>
 
 export default function Backtest() {
   const strategies = useQuery({ queryKey: ['strategies'], queryFn: listStrategies })
+  const watchlist = useQuery({ queryKey: ['watchlist'], queryFn: listWatchlist })
+  const [etf, setEtf] = useState<string>()
   const [strategy, setStrategy] = useState<string>()
   const [start, setStart] = useState<dayjs.Dayjs | null>(null)
   const [end, setEnd] = useState<dayjs.Dayjs | null>(null)
@@ -42,6 +47,7 @@ export default function Backtest() {
         end: end.format('YYYY-MM-DD'),
         frame,
         config,
+        symbol: etf, // 可选，覆盖 config.symbol（同策略测不同标的）
       })
     },
     onSuccess: setResult,
@@ -60,20 +66,38 @@ export default function Backtest() {
       dataIndex: 'ts',
       render: (v) => (v ? new Date(v).toLocaleString() : '—'),
     },
-    { title: '方向', dataIndex: 'side' },
+    {
+      title: '方向',
+      dataIndex: 'side',
+      render: (v) =>
+        v === 'buy' ? <Tag color="green">买</Tag> : <Tag color="red">卖</Tag>,
+    },
     { title: '价格', dataIndex: 'price' },
     { title: '份额', dataIndex: 'shares' },
     { title: '手续费', dataIndex: 'fee' },
     { title: '已实现盈亏', dataIndex: 'realized_pnl', render: (v) => v ?? '—' },
   ]
 
+  const etfOptions = (watchlist.data ?? []).map((w) => ({
+    value: w.symbol,
+    label: w.name ? `${w.symbol} · ${w.name}` : w.symbol,
+  }))
+
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card title="回测">
         <Space wrap>
+          <AutoComplete
+            placeholder="ETF 代码（可从关注列表选）"
+            value={etf}
+            onChange={setEtf}
+            options={etfOptions}
+            filterOption
+            style={{ width: 240 }}
+          />
           <Select
-            placeholder="选策略"
-            style={{ width: 220 }}
+            placeholder="策略"
+            style={{ width: 200 }}
             value={strategy}
             onChange={setStrategy}
             options={
@@ -91,7 +115,8 @@ export default function Backtest() {
             style={{ width: 100 }}
             options={[
               { label: '日线', value: '1d' },
-              { label: '分钟', value: '1m' },
+              { label: '1分', value: '1m' },
+              { label: '5分', value: '5m' },
             ]}
           />
           <Button type="primary" onClick={() => run.mutate()} loading={run.isPending}>
@@ -150,6 +175,6 @@ export default function Backtest() {
           </Card>
         </>
       )}
-    </Space>
+    </div>
   )
 }
