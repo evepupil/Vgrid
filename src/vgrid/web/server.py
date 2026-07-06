@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
+from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import state as state_router
 from vgrid.web.routes import strategies as strategies_router
 
@@ -34,6 +35,7 @@ def create_app(
     app.state.strategies_dir = strategies_dir or _DEFAULT_STRATEGIES_DIR
     app.include_router(state_router.router)
     app.include_router(strategies_router.router)
+    app.include_router(backtest_router.router)
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:

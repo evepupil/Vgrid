@@ -23,6 +23,7 @@ from vgrid.core.models import Fill
 from vgrid.core.money import shares_for_amount
 from vgrid.store.repository import load_config, load_fills, load_ticks
 from vgrid.strategy.engine import GridEngine
+from vgrid.web.curve import downsample
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +86,7 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         sharpe = Decimal(0)
     buy_hold = _buy_hold(ticks, initial, config)
 
-    sampled, indices = _downsample(full_curve, curve_points)
+    sampled, indices = downsample(full_curve, curve_points)
     fill_marks = [
         FillMark(
             index=_map_to_sampled(tick_idx, indices),
@@ -145,15 +146,6 @@ def _buy_hold(
     exit_notional = ticks[-1][1] * shares
     proceeds = exit_notional - config.fee.compute(exit_notional)
     return _ratio(proceeds - cost, cost)
-
-
-def _downsample(curve: list[EquityPoint], m: int) -> tuple[list[EquityPoint], list[int]]:
-    """等距采样到 m 个点；返回采样曲线 + 采样点在原曲线的索引（升序）。"""
-    n = len(curve)
-    if n <= m:
-        return list(curve), list(range(n))
-    indices = sorted({round(i * (n - 1) / (m - 1)) for i in range(m)})
-    return [curve[i] for i in indices], indices
 
 
 def _map_to_sampled(tick_idx: int, indices: list[int]) -> int:
