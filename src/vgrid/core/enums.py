@@ -48,8 +48,10 @@ class Frame(StrEnum):
     """K 线时间周期。
 
     - DAILY：日线，每根代表一个交易日。
-    - MINUTE：1 分钟线。后续可扩展 5m / 15m 等。
+    - MINUTE：1 分钟线。
+    - M5：5 分钟线。分钟线数据走 mootdx（通达信协议，稳定不限 IP）。
     """
 
     DAILY = "1d"
     MINUTE = "1m"
+    M5 = "5m"

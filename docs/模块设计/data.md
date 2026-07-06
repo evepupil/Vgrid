@@ -24,6 +24,7 @@
 | `provider.py` | `BarProvider` 协议 + `bars_from_columns` 纯函数（列 dict → list[Bar]） |
 | `akshare_provider.py` | `AkshareProvider`：调 akshare 取日线 / 分钟线，DataFrame → 列 dict |
 | `tencent_provider.py` | `TencentProvider`：直连腾讯 fqkline，ETF 前复权日线（em 不稳时的稳定兜底） |
+| `mootdx_provider.py` | `MootdxProvider`：通达信协议拉分钟线（1m/5m），稳定的分钟源 |
 | `cache.py` | `ParquetCache`：每个 (symbol, frame) 一个 parquet 文件，存全量，读回复用 `bars_from_columns` |
 | `loader.py` | `load_bars` 门面：组合 provider + cache，区间命中 / 增量合并 / refresh |
 
@@ -62,6 +63,17 @@
   （``qfqday`` / ``hfqday`` / ``day``）。
 - symbol 前缀同 sina：5 开头 ``sh``，其余 ``sz``。只支持日线。
 
+### mootdx_provider.py（通达信协议分钟线）
+- 走通达信 TCP 7709 协议（``mootdx`` 库），不依赖东财/腾讯 HTTP host，服务器多可切换、
+  不限 IP，实测连接+拉取 5/5 稳定。akshare ETF 分钟线（东财）不稳、腾讯分钟线 host 也连不上，
+  mootdx 是稳定分钟源。
+- 支持 ``Frame.MINUTE``（1 分钟，frequency=7）和 ``Frame.M5``（5 分钟，frequency=0）。
+  历史深度：1 分钟约 2.5 个月、5 分钟约 1 年 8 个月（实测 159920，2026-07）。
+- 单次最多 800 根，翻页（``start`` 累加）拉全量，直到覆盖请求 ``start`` 日期；本地按
+  ``[start, end]`` 过滤、跨页按时间戳去重（``keep="last"``）。
+- 连接复用：首次 fetch 连接（``Quotes.factory`` 选最快服务器），后续复用；连接异常重连一次。
+- 返回不复权原始价——跨除权日有缺口，复权后续用 mootdx Affair 接口做。
+
 ### cache.py（Parquet 落盘）
 - 缓存目录 `~/.vgrid/cache/`，文件名 `<symbol>_<frame>.parquet`。
 - 价格 / 成交量存 `string`（`Decimal` 无损往返），`ts` 存 `timestamp`。读回 `to_pydict()`
@@ -89,3 +101,10 @@
   首尔也通、支持前复权、ETF 友好。新增 ``TencentProvider``，按年分段绕开 640 根上限、
   字段顺序映射（close 从第 3 位挪到标准位置）。单测覆盖字段映射、前缀、分段合并去重、
   adjust、分钟线拒绝（mock requests 不打网）。
+- **2026-07-07（加 mootdx 分钟源 + Frame.M5）**：分钟线数据源实测——akshare ETF 分钟线
+  （东财 push2his）和日线 em 一样被服务端丢弃、腾讯分钟线 mkline 重定向 web3 host 连不上、
+  新浪只支持 5 分钟且只能最近 5.5 个月。改用 mootdx 走通达信 TCP 协议：连接+拉取 5/5 稳定、
+  不限 IP、1 分钟历史 2.5 个月、5 分钟历史 1 年 8 个月。新增 ``MootdxProvider``（1m/5m 翻页
+  拉全量 + 区间过滤去重）、``Frame.M5``、``metrics._periods_per_year`` 加 5 分钟系数（252×48）。
+  单测覆盖字段映射/翻页停止/区间过滤/跨页去重（mock Quotes 不打网）。mootdx 返回不复权，
+  复权后续用 Affair 接口做。

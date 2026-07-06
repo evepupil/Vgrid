@@ -108,9 +108,11 @@ def sharpe_of(equity_curve: tuple[EquityPoint, ...], frame: Frame) -> Decimal:
 
 
 def _periods_per_year(frame: Frame) -> int:
-    """A 股：日线 252 个交易日；1 分钟线约 252 × 240 根。"""
+    """A 股：日线 252 个交易日；1 分钟线 252×240；5 分钟线 252×48。"""
     if frame is Frame.MINUTE:
         return 252 * 240
+    if frame is Frame.M5:
+        return 252 * 48
     return 252
 
 
