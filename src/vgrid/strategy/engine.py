@@ -240,9 +240,10 @@ class GridEngine:
         notional = lot.sell_target * lot.shares
         fee = self._config.fee.compute(notional)
         proceeds = notional - fee
-        self._realized_pnl += proceeds - lot.cost
+        pnl = proceeds - lot.cost
+        self._realized_pnl += pnl
         self._committed -= lot.cost
         self._total_fee += fee
         self._cash_flow += proceeds
         del self._lots[lot.sell_target]
-        return Fill(Side.SELL, lot.sell_target, lot.shares, fee, lot.level_index)
+        return Fill(Side.SELL, lot.sell_target, lot.shares, fee, lot.level_index, realized_pnl=pnl)

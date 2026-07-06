@@ -48,6 +48,8 @@ class Fill:
         fee: 这笔的手续费。
         level_index: 对应的网格线序号。
         ts: 成交时间；纯逻辑单测里可为 None，回测 / 实盘会填真实时间。
+        realized_pnl: 卖出成交的已实现盈亏（卖出净收入 − 对应持仓成本，已扣两边
+            手续费）；买入成交为 None。
     """
 
     side: Side
@@ -56,6 +58,7 @@ class Fill:
     fee: Decimal
     level_index: int
     ts: datetime | None = None
+    realized_pnl: Decimal | None = None
 
     @property
     def notional(self) -> Decimal:
