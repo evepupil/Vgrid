@@ -39,6 +39,24 @@ def test_first_tick_starts_engine_without_fills() -> None:
     assert len(load_ticks(conn)) == 1
 
 
+def test_center_build_persists_buildup_fills() -> None:
+    """中枢建仓：首个 tick 的 start 成交也要落库。"""
+    conn = connect()
+    cfg = GridConfig(
+        symbol="159920",
+        lower_price=Decimal("1.00"),
+        upper_price=Decimal("1.20"),
+        grid_count=4,
+        per_grid_amount=Decimal("2000"),
+        capital_cap=Decimal("50000"),
+    )  # 默认 CENTER
+    runner = PaperRunner(cfg, _FakeProvider(), conn)
+    runner.replay()
+    fills = runner.process_tick(datetime(2024, 1, 2, 9, 30), Decimal("1.10"))
+    assert len(fills) >= 1  # 上方两格底仓
+    assert len(load_fills(conn)) == len(fills)  # 全部落库
+
+
 def test_process_tick_drives_buys_and_persists() -> None:
     conn = connect()
     runner = PaperRunner(_zero_config(), _FakeProvider(), conn)

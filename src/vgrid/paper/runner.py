@@ -85,9 +85,8 @@ class PaperRunner:
         """
         save_tick(self._conn, ts, price)
         if not self._started:
-            self._engine.start(price)
+            fills = [replace(f, ts=ts) for f in self._engine.start(price)]
             self._started = True
-            fills: list[Fill] = []
         else:
             fills = [replace(f, ts=ts) for f in self._engine.step(price)]
         for f in fills:

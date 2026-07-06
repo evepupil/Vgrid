@@ -27,8 +27,8 @@
 
 - **replay**：`load_ticks` → 若非空，`engine.start(ticks[0])` + 逐个 `step` 重建；空则等首个实时
   tick 在 `process_tick` 里 `start`。
-- **process_tick(ts, price)**：`save_tick` → 首个 tick `engine.start`（零成交），之后
-  `engine.step` 产 fills → `save_fill`。是纯逻辑测试入口（不调 provider、不判 session）。
+- **process_tick(ts, price)**：`save_tick` → 首个 tick `engine.start`（CENTER 模式含建仓成交，ZERO
+  零成交），之后 `engine.step` 产 fills → `save_fill`。是纯逻辑测试入口（不调 provider、不判 session）。
 - **run()**：`replay` 后长驻循环；盘中 `step_once`（fetch + `process_tick`）+ `sleep(interval)`，
   盘外 sleep 到下一开盘（至多 60s 重判，防时钟漂移）。
 - **配置一致性**：`__init__` 校验 DB 已存配置与传入一致，不一致报错（防误用）。
@@ -40,3 +40,5 @@
 - **2026-07-06（M4a 首次实现）**：realtime provider（akshare + 协议）、session（A 股时段）、
   runner（replay + process_tick + run + snapshot）。单测覆盖首次 start 零成交、tick 驱动买卖
   落库、replay 状态一致、配置不一致报错、时段判断（盘内 / 盘前 / 午休 / 盘后 / 周末）。
+- **2026-07-06（M4a 修复）**：`process_tick` 首个 tick 的 start 成交（CENTER 建仓）原被丢弃，
+  改成落库；补 CENTER 建仓单测。
