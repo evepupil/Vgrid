@@ -36,9 +36,16 @@
   akshare / 未来别的源各写各的实现。
 
 ### akshare_provider.py（akshare 适配）
-- 日线 `fund_etf_hist_em`（前复权 `qfq`）、分钟线 `fund_etf_hist_min_em`。
-- `_df_to_columns`：把中文列名（日期 / 时间、开盘、最高、最低、收盘、成交量）映射成标准
-  `ts/open/...`；列名对不上直接抛 `ValueError`。
+- 日线两源可选（`source` 参数，构造时传）：``"sina"``（默认）或 ``"em"``。
+  - **sina**：``fund_etf_hist_sina``，走新浪 host，实测稳定可用（东财 host 常被代理拦）。
+    **返回不复权原始价**——回测前要意识到除权缺口会影响结果。只接 ``symbol`` 一个参数、
+    返回全量历史，故在本地按 ``date`` 列（先 ``astype(str)``，源里可能是 date 对象）字典序过滤
+    到请求区间；symbol 要加前缀（5 开头沪市 ``sh``、其余深市 ``sz``），见 ``_sina_symbol``。
+  - **em**：``fund_etf_hist_em``，前复权 ``qfq``，按 ``start_date/end_date``（``YYYYMMDD``）取数。
+    数据复权、回测更准，但 host 间歇被代理拦，不够稳定。
+- 分钟线只有东财源（``fund_etf_hist_min_em``），不受 ``source`` 影响。
+- `_df_to_columns`：把列名（em 中文 日期/时间、开盘…；sina 英文 date/open…）映射成标准
+  `ts/open/...`；列名对不上直接抛 `ValueError`。两源走同一条转换，上层无感。
 - akshare 的接口签名 / 列名随版本变，适配集中在本文件；真实环境跑前确认版本对得上。
 
 ### cache.py（Parquet 落盘）
@@ -58,3 +65,7 @@
   provider；Parquet 缓存（`Decimal` 以 string 往返保精度）；`load_bars` 门面（区间命中 /
   增量合并 / refresh）。单测覆盖列式转换、缓存往返与精度、loader 命中 / 合并 / refresh
   （FakeProvider 不打网）、akshare 列适配与 fetch（mock ak）。
+- **2026-07-06（M4b 后：加 sina 源）**：东财 host（``push2his.eastmoney.com``）间歇被代理拦，
+  日线加 ``"sina"`` 源作默认（新浪 host 稳定）。sina 返回不复权全量历史，本地按区间过滤、
+  symbol 加 ``sh/sz`` 前缀；``em`` 源保留为可选（复权、更准但常被拦）。单测覆盖两源列适配、
+  深沪前缀、按区间过滤（mock ak 不打网）。注意：sina 不复权 → 回测有除权缺口失真。

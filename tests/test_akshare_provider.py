@@ -9,8 +9,11 @@ import pytest
 from vgrid.core.enums import Frame
 from vgrid.data.akshare_provider import AkshareProvider, _df_to_columns
 
+_COL_MAP_EM = {"开盘": "open", "最高": "high", "最低": "low", "收盘": "close", "成交量": "volume"}
+_COL_MAP_SINA = {"open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"}
 
-def _sample_df() -> pd.DataFrame:
+
+def _sample_df_em() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "日期": ["2024-01-02", "2024-01-03"],
@@ -23,29 +26,52 @@ def _sample_df() -> pd.DataFrame:
     )
 
 
-def test_df_to_columns_maps_chinese_headers() -> None:
-    cols = _df_to_columns(_sample_df(), ts_col="日期")
+def _sample_df_sina() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "date": ["2024-01-02", "2024-01-03", "2024-01-04"],
+            "open": [1.00, 1.01, 1.02],
+            "high": [1.05, 1.06, 1.07],
+            "low": [0.99, 1.00, 1.01],
+            "close": [1.03, 1.04, 1.05],
+            "volume": [100, 200, 300],
+        }
+    )
+
+
+def test_invalid_source_rejected() -> None:
+    with pytest.raises(ValueError, match="不支持的 source"):
+        AkshareProvider(source="xxx")
+
+
+def test_df_to_columns_em_maps_chinese() -> None:
+    cols = _df_to_columns(_sample_df_em(), ts_col="日期", col_map=_COL_MAP_EM)
     assert cols["ts"] == ["2024-01-02", "2024-01-03"]
-    assert cols["open"] == [1.00, 1.01]
     assert cols["close"] == [1.03, 1.04]
 
 
+def test_df_to_columns_sina_identity() -> None:
+    cols = _df_to_columns(_sample_df_sina(), ts_col="date", col_map=_COL_MAP_SINA)
+    assert cols["ts"] == ["2024-01-02", "2024-01-03", "2024-01-04"]
+    assert cols["open"] == [1.00, 1.01, 1.02]
+
+
 def test_df_to_columns_rejects_missing_column() -> None:
-    df = pd.DataFrame({"日期": ["2024-01-02"], "开盘": [1.0]})
+    df = pd.DataFrame({"date": ["2024-01-02"], "open": [1.0]})
     with pytest.raises(ValueError, match="缺少列"):
-        _df_to_columns(df, ts_col="日期")
+        _df_to_columns(df, ts_col="date", col_map=_COL_MAP_SINA)
 
 
-def test_fetch_daily_through_mock(monkeypatch: pytest.MonkeyPatch) -> None:
-    df = _sample_df()
+def test_fetch_daily_em_through_mock(monkeypatch: pytest.MonkeyPatch) -> None:
+    df = _sample_df_em()
     captured: dict[str, object] = {}
 
-    def _fake_hist(**kwargs: object) -> pd.DataFrame:
+    def _fake(**kwargs: object) -> pd.DataFrame:
         captured.update(kwargs)
         return df
 
-    monkeypatch.setattr("vgrid.data.akshare_provider.ak.fund_etf_hist_em", _fake_hist)
-    prov = AkshareProvider()
+    monkeypatch.setattr("vgrid.data.akshare_provider.ak.fund_etf_hist_em", _fake)
+    prov = AkshareProvider(source="em")
     series = prov.fetch("159920", date(2024, 1, 2), date(2024, 1, 3), Frame.DAILY)
 
     assert captured["symbol"] == "159920"
@@ -55,3 +81,36 @@ def test_fetch_daily_through_mock(monkeypatch: pytest.MonkeyPatch) -> None:
     assert series[0].open == Decimal("1.00")
     assert series[1].close == Decimal("1.04")
     assert series[0].ts.date() == date(2024, 1, 2)
+
+
+def test_fetch_daily_sina_through_mock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """默认 sina 源：加 sz/sh 前缀，返回全量后按区间过滤。"""
+    df = _sample_df_sina()  # 3 行，过滤后留 2 行
+    captured: dict[str, object] = {}
+
+    def _fake(**kwargs: object) -> pd.DataFrame:
+        captured.update(kwargs)
+        return df
+
+    monkeypatch.setattr("vgrid.data.akshare_provider.ak.fund_etf_hist_sina", _fake)
+    prov = AkshareProvider()  # 默认 sina
+    series = prov.fetch("159920", date(2024, 1, 2), date(2024, 1, 3), Frame.DAILY)
+
+    assert captured["symbol"] == "sz159920"  # 深市加 sz 前缀
+    assert len(series) == 2  # 过滤掉 01-04
+    assert series[0].open == Decimal("1.00")
+    assert series[1].ts.date() == date(2024, 1, 3)
+
+
+def test_fetch_daily_sina_sh_prefix_for_sh_etf(monkeypatch: pytest.MonkeyPatch) -> None:
+    df = _sample_df_sina()
+    captured: dict[str, object] = {}
+
+    def _fake(**kwargs: object) -> pd.DataFrame:
+        captured.update(kwargs)
+        return df
+
+    monkeypatch.setattr("vgrid.data.akshare_provider.ak.fund_etf_hist_sina", _fake)
+    prov = AkshareProvider()
+    prov.fetch("510300", date(2024, 1, 2), date(2024, 1, 3), Frame.DAILY)
+    assert captured["symbol"] == "sh510300"  # 沪市加 sh 前缀
