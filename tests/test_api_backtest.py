@@ -84,7 +84,7 @@ def test_backtest_invalid_config_400(client: TestClient) -> None:
 
 def test_backtest_invalid_frame_400(client: TestClient) -> None:
     body = _body()
-    body["frame"] = "5m"
+    body["frame"] = "xxx"
     r = client.post("/api/backtest", json=body)
     assert r.status_code == 400
 
@@ -97,3 +97,20 @@ def test_backtest_no_data_404(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     client = TestClient(create_app(strategies_dir=tmp_path))
     r = client.post("/api/backtest", json=_body())
     assert r.status_code == 404
+
+
+def test_backtest_symbol_overrides_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """body.symbol 覆盖 config.symbol（同套策略参数测不同标的）。"""
+    captured: dict[str, object] = {}
+
+    def _fake_load(symbol: str, *a: object, **kw: object) -> BarSeries:
+        captured["symbol"] = symbol
+        return _bars()
+
+    monkeypatch.setattr("vgrid.web.routes.backtest.load_bars", _fake_load)
+    client = TestClient(create_app(strategies_dir=tmp_path))
+    body = _body()
+    body["symbol"] = "510300"  # config.symbol 是 159920，覆盖
+    r = client.post("/api/backtest", json=body)
+    assert r.status_code == 200
+    assert captured["symbol"] == "510300"

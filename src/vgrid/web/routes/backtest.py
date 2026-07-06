@@ -1,11 +1,12 @@
 """回测路由：``POST /api/backtest``。
 
-请求体给区间 + 周期 + 完整策略 config（前端从策略库读了带过来，或直接编辑）。
-symbol 从 config 取（一个策略绑一个 ETF，符合「策略文件化」定位）。
+请求体给区间 + 周期 + 策略 config + 可选 ``symbol``（覆盖 config.symbol，方便同一套
+策略参数测不同标的）。symbol 默认从 config 取（策略绑 ETF）。
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from fastapi import APIRouter, HTTPException
@@ -24,6 +25,7 @@ class BacktestBody(BaseModel):
     end: date
     frame: str = "1d"
     config: dict[str, object]
+    symbol: str | None = None
 
 
 @router.post("/backtest")
@@ -32,6 +34,8 @@ def backtest(body: BacktestBody) -> dict[str, object]:
         config = GridConfig.from_dict(body.config)
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=400, detail=f"策略配置非法：{exc}") from exc
+    if body.symbol is not None and body.symbol != config.symbol:
+        config = replace(config, symbol=body.symbol)
     try:
         frame = Frame(body.frame)
     except ValueError as exc:
