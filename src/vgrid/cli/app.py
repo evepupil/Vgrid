@@ -235,7 +235,7 @@ def _cmd_paper_serve(args: argparse.Namespace) -> int:
     import uvicorn  # noqa: PLC0415  懒导入，避免 cli 模块加载依赖 uvicorn
 
     db = args.db or _default_db()
-    app = create_app(str(db))
+    app = create_app(str(db), frontend_dist=Path("frontend/dist"))
     print(f"看盘面板启动 · http://{args.host}:{args.port}（库 {db}）")
     print("—— Ctrl+C 停止")
     uvicorn.run(app, host=args.host, port=args.port)

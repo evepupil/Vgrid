@@ -52,3 +52,18 @@ def test_api_state_returns_json(tmp_path: Path) -> None:
     assert j["symbol"] == "159920"
     assert len(j["equity_curve"]) == 2
     assert "fill_marks" in j
+
+
+def test_serves_frontend_dist_when_configured(tmp_path: Path) -> None:
+    """传 frontend_dist 时后端 serve SPA（/ 和 /backtest 都回退 index.html）。"""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>vgrid console</html>", encoding="utf-8")
+    client = TestClient(create_app(":memory:", frontend_dist=dist))
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "vgrid console" in r.text
+    # SPA 路由回退
+    r = client.get("/backtest")
+    assert r.status_code == 200
+    assert "vgrid console" in r.text
