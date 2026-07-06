@@ -4,8 +4,12 @@
 所有会被参数扫描（M3）调优的旋钮都集中在这里。
 """
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from vgrid.core.enums import BaseBuildMode, SpacingMode
 from vgrid.core.fees import FeeModel
@@ -75,3 +79,69 @@ class GridConfig:
     def is_amount_fee_efficient(self) -> bool:
         """每格金额是否达到「费率不被保底费拉高」的临界值。"""
         return self.per_grid_amount >= self.fee.min_efficient_notional
+
+    def to_dict(self) -> dict[str, Any]:
+        """序列化为可 JSON 化的 dict（``Decimal`` 转 ``str`` 保精度）。"""
+        return {
+            "symbol": self.symbol,
+            "lower_price": str(self.lower_price),
+            "upper_price": str(self.upper_price),
+            "grid_count": self.grid_count,
+            "per_grid_amount": str(self.per_grid_amount),
+            "capital_cap": str(self.capital_cap),
+            "spacing_mode": self.spacing_mode.value,
+            "base_build_mode": self.base_build_mode.value,
+            "upper_rebuild_ratio": str(self.upper_rebuild_ratio),
+            "down_spacing_factor": str(self.down_spacing_factor),
+            "down_amount_factor": str(self.down_amount_factor),
+            "fee": {"rate": str(self.fee.rate), "min_fee": str(self.fee.min_fee)},
+            "lot_size": self.lot_size,
+            "price_tick": str(self.price_tick),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> GridConfig:
+        """从 dict 反序列化（``to_dict`` 的逆操作），供 CLI 的 ``--config`` 用。
+
+        必填字段（symbol / 区间 / 格数 / 每格金额 / 资金上限）必须给出；可选字段
+        缺省时用 ``GridConfig`` 的默认值。``Decimal`` 字段接受 str 或数字。
+        """
+
+        def dec(key: str) -> Decimal:
+            return Decimal(str(data[key]))
+
+        fee_raw = data.get("fee")
+        fee = (
+            FeeModel(
+                rate=Decimal(str(fee_raw["rate"])),
+                min_fee=Decimal(str(fee_raw["min_fee"])),
+            )
+            if isinstance(fee_raw, Mapping)
+            else FeeModel()
+        )
+        return cls(
+            symbol=str(data["symbol"]),
+            lower_price=dec("lower_price"),
+            upper_price=dec("upper_price"),
+            grid_count=int(data["grid_count"]),
+            per_grid_amount=dec("per_grid_amount"),
+            capital_cap=dec("capital_cap"),
+            spacing_mode=SpacingMode(data["spacing_mode"])
+            if "spacing_mode" in data
+            else SpacingMode.ARITHMETIC,
+            base_build_mode=BaseBuildMode(data["base_build_mode"])
+            if "base_build_mode" in data
+            else BaseBuildMode.CENTER,
+            upper_rebuild_ratio=Decimal(str(data["upper_rebuild_ratio"]))
+            if "upper_rebuild_ratio" in data
+            else Decimal(0),
+            down_spacing_factor=Decimal(str(data["down_spacing_factor"]))
+            if "down_spacing_factor" in data
+            else Decimal(1),
+            down_amount_factor=Decimal(str(data["down_amount_factor"]))
+            if "down_amount_factor" in data
+            else Decimal(1),
+            fee=fee,
+            lot_size=int(data["lot_size"]) if "lot_size" in data else LOT_SIZE,
+            price_tick=Decimal(str(data["price_tick"])) if "price_tick" in data else PRICE_TICK,
+        )

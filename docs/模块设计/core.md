@@ -19,11 +19,12 @@
 
 | 文件 | 内容 |
 |---|---|
-| `enums.py` | `Side`（买/卖）、`OrderKind`（限价/市价）、`SpacingMode`（等差/等比）、`BaseBuildMode`（中枢/零底仓） |
+| `enums.py` | `Side`、`OrderKind`、`SpacingMode`、`BaseBuildMode`、`Frame`（K 线周期：日线/分钟线） |
+| `bar.py` | `Bar`（一根 K 线）、`BarSeries`（一串 K 线，含时间单调递增与 OHLC 合法性校验） |
 | `money.py` | `Decimal` 量化工具：价格对齐 tick、金额对齐分、预算算整手份额 |
 | `fees.py` | `FeeModel` 手续费模型 |
 | `models.py` | `OrderIntent`（订单意图）、`Fill`（成交）、`Lot`（持仓单元）、`Position`（持仓快照） |
-| `config.py` | `GridConfig` 网格策略全部参数 + 校验 |
+| `config.py` | `GridConfig` 网格策略全部参数 + 校验 + 序列化（`to_dict`/`from_dict`） |
 
 ## ③ 实现细节
 
@@ -50,8 +51,22 @@
 - `GridConfig` 集中所有策略旋钮（含追踪 / 放大 / 重建等参数），是 M3 参数扫描要调的
   对象。`__post_init__` 做完整合法性校验，非法直接抛 `ValueError`。
 - `is_amount_fee_efficient`：每格金额是否达到费率临界（≥2000）。
+- `to_dict` / `from_dict`：可 JSON 化的序列化往返。`Decimal` 一律转 `str` 保精度，`fee`
+  展开成 `{rate, min_fee}`。`from_dict` 必填字段必须给、可选字段缺省走默认值，供 CLI
+  的 `--config cfg.json` 用。
+
+### K 线（bar.py）
+- `Bar`：一根 K 线（`ts/open/high/low/close/volume`，全 `Decimal`）。`__post_init__` 校验
+  四价为正、`high` 不低于 O/C/L、`low` 不高于 O/C/H（一字板 `high==low` 合法）。
+- `BarSeries`：一标的某周期下从早到晚排好的 K 线串，校验时间严格递增。空序列合法
+  （数据还没下），有数据就必须有序；支持 `len/iter/[]`，回测器直接迭代。
+- 行情是领域原语，和 Order/Fill 同级；外部数据源（akshare 的 DataFrame）转 `Bar` 的
+  工作交给 `data` 层，core 不绑定数据源格式。
 
 ## ④ 改动历史
 
 - **2026-07-06（M1 首次实现）**：建立全部领域模型、手续费模型、配置与校验、金额工具。
   配套单测覆盖手续费临界、份额取整、配置校验。
+- **2026-07-06（M2 配套）**：新增统一 K 线模型 `Bar`/`BarSeries`（OHLC + 时间校验），
+  供回测与行情层共用；`GridConfig` 加 `to_dict`/`from_dict` 序列化供 CLI 配置文件；
+  `enums.py` 加 `Frame`（日线/分钟线）。

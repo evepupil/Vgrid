@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from vgrid.core import GridConfig
+from vgrid.core import BaseBuildMode, FeeModel, GridConfig, SpacingMode
 
 MakeConfig = Callable[..., GridConfig]
 
@@ -44,3 +44,31 @@ def test_down_spacing_factor_at_least_one(make_config: MakeConfig) -> None:
 def test_capital_cap_positive(make_config: MakeConfig) -> None:
     with pytest.raises(ValueError, match="资金上限必须为正"):
         make_config(capital_cap=Decimal("0"))
+
+
+def test_config_roundtrip(make_config: MakeConfig) -> None:
+    cfg = make_config(
+        spacing_mode=SpacingMode.GEOMETRIC,
+        base_build_mode=BaseBuildMode.ZERO,
+        upper_rebuild_ratio=Decimal("0.3"),
+        down_spacing_factor=Decimal("1.2"),
+        down_amount_factor=Decimal("1.5"),
+    )
+    assert GridConfig.from_dict(cfg.to_dict()) == cfg
+
+
+def test_from_dict_optional_fields_use_defaults(make_config: MakeConfig) -> None:
+    cfg = make_config()
+    minimal = {
+        "symbol": cfg.symbol,
+        "lower_price": str(cfg.lower_price),
+        "upper_price": str(cfg.upper_price),
+        "grid_count": cfg.grid_count,
+        "per_grid_amount": str(cfg.per_grid_amount),
+        "capital_cap": str(cfg.capital_cap),
+    }
+    restored = GridConfig.from_dict(minimal)
+    assert restored.spacing_mode is SpacingMode.ARITHMETIC
+    assert restored.base_build_mode is BaseBuildMode.CENTER
+    assert restored.fee == FeeModel()
+    assert restored == cfg  # 默认值就是 make_config 用的默认值
