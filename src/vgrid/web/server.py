@@ -12,30 +12,36 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from vgrid.web.routes import backtest as backtest_router
+from vgrid.web.routes import portfolio as portfolio_router
 from vgrid.web.routes import state as state_router
 from vgrid.web.routes import strategies as strategies_router
 
 _TEMPLATE = Path(__file__).parent / "templates" / "index.html"
 _DEFAULT_STRATEGIES_DIR = Path("strategies")
+_DEFAULT_DATA_DIR = Path.home() / ".vgrid"
 
 
 def create_app(
     default_db: str = ":memory:",
     *,
     strategies_dir: Path | None = None,
+    data_dir: Path | None = None,
 ) -> FastAPI:
     """创建控制台 FastAPI 应用。
 
     Args:
         default_db: ``/api/state`` 的默认模拟盘库路径。
         strategies_dir: 策略库目录（默认 cwd 下 ``strategies/``）。
+        data_dir: 用户数据目录（存 portfolio.sqlite + paper/ 实例 DB，默认 ``~/.vgrid``）。
     """
     app = FastAPI(title="vgrid console")
     app.state.default_db = default_db
     app.state.strategies_dir = strategies_dir or _DEFAULT_STRATEGIES_DIR
+    app.state.data_dir = data_dir or _DEFAULT_DATA_DIR
     app.include_router(state_router.router)
     app.include_router(strategies_router.router)
     app.include_router(backtest_router.router)
+    app.include_router(portfolio_router.router)
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
