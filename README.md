@@ -50,4 +50,5 @@ vgrid paper run    --symbol 159920 --config examples/159920.json --interval 15  
 vgrid paper status                                                          # 查模拟盘状态
 cd frontend && npm run build                                            # 构建前端（首次 / 改前端后跑一次）
 vgrid paper serve --port 8000                                          # 启动控制台（8000 一站式，含前端）
+cd frontend && npm run dev                                              # 开发模式（HMR，5180，proxy /api → 8000）
 ```
