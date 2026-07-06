@@ -22,8 +22,10 @@ from vgrid.backtest import simulate
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
+from vgrid.paper import AkshareRealtimeProvider, PaperRunner
 from vgrid.report import render_report, render_summary
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
+from vgrid.store import connect, load_config
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,6 +36,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_fetch(args)
     if args.command == "scan":
         return _cmd_scan(args)
+    if args.command == "paper":
+        if args.paper_command == "run":
+            return _cmd_paper_run(args)
+        return _cmd_paper_status(args)
     return _cmd_backtest(args)
 
 
@@ -71,6 +77,22 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Decimal,
         default=None,
         help="初始资金（默认用配置的 capital_cap）",
+    )
+
+    p_paper = sub.add_parser("paper", help="模拟盘（实时轮询 + 虚拟账户）")
+    paper_sub = p_paper.add_subparsers(dest="paper_command", required=True)
+
+    p_run = paper_sub.add_parser("run", help="启动模拟盘长驻轮询")
+    p_run.add_argument("--config", type=Path, required=True, help="策略配置 JSON")
+    p_run.add_argument("--symbol", required=True, help="标的代码")
+    p_run.add_argument(
+        "--db", type=Path, default=None, help="SQLite 库路径（默认 ~/.vgrid/paper.sqlite）"
+    )
+    p_run.add_argument("--interval", type=float, default=15.0, help="轮询间隔秒")
+
+    p_status = paper_sub.add_parser("status", help="查看模拟盘当前状态")
+    p_status.add_argument(
+        "--db", type=Path, default=None, help="SQLite 库路径（默认 ~/.vgrid/paper.sqlite）"
     )
     return parser
 
@@ -152,6 +174,50 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     )
     print(f"\n扫描报告：{scan_path}")
     print(f"最优组合完整报告：{best_path}")
+    return 0
+
+
+def _default_db() -> Path:
+    """默认模拟盘库：~/.vgrid/paper.sqlite。"""
+    return Path.home() / ".vgrid" / "paper.sqlite"
+
+
+def _cmd_paper_run(args: argparse.Namespace) -> int:
+    db = args.db or _default_db()
+    config = _load_config(args.config)
+    conn = connect(str(db))
+    runner = PaperRunner(config, AkshareRealtimeProvider(), conn, interval=args.interval)
+    print(f"模拟盘启动 · {args.symbol}（库 {db}，轮询 {args.interval}s）")
+    print("—— Ctrl+C 停止，重启 replay 续跑")
+    try:
+        runner.run()
+    except KeyboardInterrupt:
+        print("\n已停止")
+    finally:
+        conn.close()
+    return 0
+
+
+def _cmd_paper_status(args: argparse.Namespace) -> int:
+    db = args.db or _default_db()
+    if not db.exists():
+        print(f"库不存在：{db}，先 paper run")
+        return 1
+    conn = connect(str(db))
+    config = load_config(conn)
+    if config is None:
+        print(f"库 {db} 无模拟盘数据，先 paper run")
+        conn.close()
+        return 1
+    runner = PaperRunner(config, AkshareRealtimeProvider(), conn)
+    runner.replay()
+    snap = runner.snapshot()
+    print(f"模拟盘状态 · {config.symbol}（库 {db}）")
+    print(f"  最新价: {snap.last_price}  时间: {snap.last_ts}")
+    print(f"  持仓: {snap.open_lots} 格  占用资金: {snap.committed}")
+    print(f"  已实现盈亏: {snap.realized_pnl}  手续费: {snap.total_fee}")
+    print(f"  净现金流: {snap.cash_flow}  成交: {snap.n_fills} 笔")
+    conn.close()
     return 0
 
 
