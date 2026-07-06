@@ -1,0 +1,63 @@
+[project]
+name = "vgrid"
+version = "0.1.0"
+description = "ETF 网格量化交易系统（回测 / 模拟盘 / 实盘执行）"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "evepupil", email = "1766468434@qq.com" }]
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+]
+
+# ----------------------------------------------------------------------------
+# Ruff：格式化 + 静态检查
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E/W 语法风格, F pyflakes, I import 排序, N 命名, UP pyupgrade,
+# B bugbear, SIM 精简, RUF ruff 专属, ANN 类型标注, PL pylint
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF", "ANN", "PL"]
+ignore = [
+    "PLR0913", # 参数过多——网格配置项本来就多
+    "RUF001",  # 全角标点「像」半角——中文注释里正常，不是笔误
+    "RUF002",  # 同上（docstring 内）
+    "RUF003",  # 同上（行内注释）
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "PLR2004"] # 测试里放宽类型标注和魔法数字
+
+# ----------------------------------------------------------------------------
+# mypy：严格模式
+# ----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_untyped_decorators = true
+files = ["src", "tests"]
+
+# ----------------------------------------------------------------------------
+# pytest
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+pythonpath = ["src"]

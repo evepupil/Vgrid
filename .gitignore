@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# uv
+.venv/
+
+# 运行数据（本地行情缓存 / 状态库 / 导出报告，不进版本库）
+data/cache/*.parquet
+data/*.sqlite
+data/*.db
+reports/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
