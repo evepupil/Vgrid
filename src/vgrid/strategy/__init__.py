@@ -1,0 +1,23 @@
+"""strategy —— 网格策略层。纯逻辑状态机，不碰任何 I/O。
+
+回测和模拟盘共用同一份策略引擎，杜绝「回测一套、实盘另一套」的偏差。
+"""
+
+from vgrid.strategy.engine import GridEngine
+from vgrid.strategy.gridlines import (
+    bottom_gap,
+    build_levels,
+    extend_levels_down,
+    shift_window_up,
+)
+from vgrid.strategy.ladder import GridLine, Ladder
+
+__all__ = [
+    "GridEngine",
+    "GridLine",
+    "Ladder",
+    "bottom_gap",
+    "build_levels",
+    "extend_levels_down",
+    "shift_window_up",
+]
