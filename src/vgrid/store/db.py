@@ -32,7 +32,12 @@ CREATE TABLE IF NOT EXISTS fill (
 
 
 def connect(path: str = ":memory:") -> sqlite3.Connection:
-    """打开 / 建库并确保 schema 存在。默认内存库（测试用）；生产给文件路径。"""
+    """打开 / 建库并确保 schema 存在。默认内存库（测试用）；生产给文件路径。
+
+    文件库开 WAL：``paper run`` 写、``paper serve`` 读两个进程并发时读不阻塞写。
+    """
     conn = sqlite3.connect(path)
     conn.executescript(_SCHEMA)
+    if path != ":memory:":
+        conn.execute("PRAGMA journal_mode=WAL")
     return conn

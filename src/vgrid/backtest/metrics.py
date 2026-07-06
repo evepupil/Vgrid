@@ -42,8 +42,8 @@ def compute_metrics(
         final_equity=final_equity,
         total_return=total_return,
         annualized_return=_annualized(total_return, bars),
-        max_drawdown=_max_drawdown(equity_curve),
-        sharpe=_sharpe(equity_curve, frame),
+        max_drawdown=max_drawdown_of(equity_curve),
+        sharpe=sharpe_of(equity_curve, frame),
         win_rate=_win_rate(sell_pnls),
         profit_loss_ratio=_profit_loss_ratio(sell_pnls),
         n_buys=n_buys,
@@ -77,7 +77,7 @@ def _annualized(total_return: Decimal, bars: tuple[Bar, ...]) -> Decimal:
     return base.exp() - Decimal(1)
 
 
-def _max_drawdown(equity_curve: tuple[EquityPoint, ...]) -> Decimal:
+def max_drawdown_of(equity_curve: tuple[EquityPoint, ...]) -> Decimal:
     peak = equity_curve[0].equity
     max_dd = Decimal(0)
     for pt in equity_curve:
@@ -88,7 +88,7 @@ def _max_drawdown(equity_curve: tuple[EquityPoint, ...]) -> Decimal:
     return max_dd
 
 
-def _sharpe(equity_curve: tuple[EquityPoint, ...], frame: Frame) -> Decimal:
+def sharpe_of(equity_curve: tuple[EquityPoint, ...], frame: Frame) -> Decimal:
     if len(equity_curve) < _MIN_SAMPLES:
         return Decimal(0)
     returns: list[Decimal] = []
