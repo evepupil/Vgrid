@@ -138,6 +138,33 @@ export async function removeWatch(symbol: string): Promise<void> {
   await del(`/api/watchlist/${encodeURIComponent(symbol)}`)
 }
 
+// 单实例看盘
+export interface StateView {
+  symbol: string
+  config: Record<string, unknown>
+  snapshot: Record<string, unknown>
+  metrics: {
+    total_return: string
+    max_drawdown: string
+    sharpe: string
+    buy_hold_return: string
+  }
+  fills: Fill[]
+  equity_curve: EquityPoint[]
+  fill_marks: {
+    index: number
+    side: 'buy' | 'sell'
+    price: string
+    shares: number
+    realized_pnl?: string
+  }[]
+  n_ticks: number
+}
+
+export async function getState(db: string): Promise<StateView> {
+  return get<StateView>(`/api/state?db=${encodeURIComponent(db)}`)
+}
+
 // helpers
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url)
