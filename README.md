@@ -48,6 +48,6 @@ vgrid scan     --symbol 159920 --start 2024-01-01 --end 2025-01-01 --frame 1d \ 
                --spec examples/scan_159920.json --metric sharpe --top 10
 vgrid paper run    --symbol 159920 --config examples/159920.json --interval 15  # 启动模拟盘（盘中轮询）
 vgrid paper status                                                          # 查模拟盘状态
-vgrid paper serve --port 8000                                          # 启动控制台后端（8000）
-cd frontend && npm run dev                                              # 启动控制台前端（5173 → 8000）
+cd frontend && npm run build                                            # 构建前端（首次 / 改前端后跑一次）
+vgrid paper serve --port 8000                                          # 启动控制台（8000 一站式，含前端）
 ```
