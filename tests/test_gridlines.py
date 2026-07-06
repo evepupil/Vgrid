@@ -45,16 +45,12 @@ def test_bottom_gap() -> None:
 
 
 def test_extend_down_uniform_when_factor_one() -> None:
-    lines = extend_levels_down(
-        Decimal("1.00"), Decimal("0.05"), Decimal("1"), depth=3
-    )
+    lines = extend_levels_down(Decimal("1.00"), Decimal("0.05"), Decimal("1"), depth=3)
     assert lines == [Decimal("0.950"), Decimal("0.900"), Decimal("0.850")]
 
 
 def test_extend_down_widens_with_factor() -> None:
-    lines = extend_levels_down(
-        Decimal("1.00"), Decimal("0.05"), Decimal("2"), depth=3
-    )
+    lines = extend_levels_down(Decimal("1.00"), Decimal("0.05"), Decimal("2"), depth=3)
     # 间距 0.05 → 0.10 → 0.20，越跌格子越宽
     assert lines == [Decimal("0.950"), Decimal("0.850"), Decimal("0.650")]
 

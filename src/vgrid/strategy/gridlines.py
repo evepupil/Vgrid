@@ -140,6 +140,4 @@ def shift_window_up(
 def _assert_strictly_increasing(levels: list[Decimal]) -> None:
     for i in range(len(levels) - 1):
         if levels[i] >= levels[i + 1]:
-            raise ValueError(
-                "网格太密：相邻网格线在最小变动单位下重合，请减少格数或放宽区间"
-            )
+            raise ValueError("网格太密：相邻网格线在最小变动单位下重合，请减少格数或放宽区间")

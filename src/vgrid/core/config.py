@@ -53,9 +53,7 @@ class GridConfig:
         if self.lower_price <= 0:
             raise ValueError(f"下沿价格必须为正：{self.lower_price}")
         if self.upper_price <= self.lower_price:
-            raise ValueError(
-                f"上沿价格 {self.upper_price} 必须大于下沿 {self.lower_price}"
-            )
+            raise ValueError(f"上沿价格 {self.upper_price} 必须大于下沿 {self.lower_price}")
         if self.grid_count < 1:
             raise ValueError(f"格数至少为 1：{self.grid_count}")
         if self.per_grid_amount <= 0:
@@ -63,17 +61,11 @@ class GridConfig:
         if self.capital_cap <= 0:
             raise ValueError(f"资金上限必须为正：{self.capital_cap}")
         if not (Decimal(0) <= self.upper_rebuild_ratio <= Decimal(1)):
-            raise ValueError(
-                f"库存重建比例必须在 [0,1]：{self.upper_rebuild_ratio}"
-            )
+            raise ValueError(f"库存重建比例必须在 [0,1]：{self.upper_rebuild_ratio}")
         if self.down_spacing_factor < 1:
-            raise ValueError(
-                f"向下格距放大系数必须 ≥ 1：{self.down_spacing_factor}"
-            )
+            raise ValueError(f"向下格距放大系数必须 ≥ 1：{self.down_spacing_factor}")
         if self.down_amount_factor <= 0:
-            raise ValueError(
-                f"向下金额系数必须为正：{self.down_amount_factor}"
-            )
+            raise ValueError(f"向下金额系数必须为正：{self.down_amount_factor}")
         if self.lot_size < 1:
             raise ValueError(f"一手份额至少为 1：{self.lot_size}")
         if self.price_tick <= 0:

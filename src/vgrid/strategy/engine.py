@@ -132,9 +132,7 @@ class GridEngine:
         orders: list[OrderIntent] = []
         for target in sorted(self._lots):
             lot = self._lots[target]
-            orders.append(
-                OrderIntent(Side.SELL, target, lot.shares, self._ladder.index_of(target))
-            )
+            orders.append(OrderIntent(Side.SELL, target, lot.shares, self._ladder.index_of(target)))
 
         self._ladder.ensure_covers_down_to(price)
         projected = self._committed
