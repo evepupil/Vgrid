@@ -4,9 +4,10 @@ ETF 网格量化交易系统。针对银河证券「0.1 元起收 + 万0.5」的
 
 ## 现状
 
-M1–M3 + M4a/b 已完成：领域模型 + 网格引擎 + 行情下载（akshare）+ 回测器 + 参数扫描 + 绩效报告
-+ CLI + 模拟盘（实时轮询 + 虚拟账户 + SQLite 持久化）+ 本地看盘 Web 面板。能对任意 A 股 / 港股类
-ETF 跑回测、扫参数、盘中跑虚拟账户、Web 看盘。消息推送（M4c）待续。
+M1–M3 + M4a/b + M5 已完成：领域模型 + 网格引擎 + 行情下载（akshare）+ 回测器 + 参数扫描 + 绩效报告
++ CLI + 模拟盘（实时轮询 + 虚拟账户 + SQLite 持久化）+ Web 控制台（FastAPI API + React/AntD 前端：
+网页回测 / 策略库 CRUD / 多实例总资产 / 关注列表 / 单实例看盘）。能对任意 A 股 / 港股类 ETF 跑回测、
+扫参数、盘中跑虚拟账户、网页控制台看盘管策略。消息推送（M4c）待续。
 
 路线图见 [`docs/roadmap.md`](docs/roadmap.md)。
 
@@ -22,8 +23,9 @@ src/vgrid/
 ├── paper/       模拟盘：实时轮询 + 虚拟账户 + replay
 ├── store/       SQLite 持久化（tick / fill / config）
 ├── report/      绩效报告（Markdown + 终端摘要）
-├── web/         看盘面板（FastAPI + 原生 HTML）
-└── cli/         命令行入口（fetch / backtest / scan / paper）
+├── web/         控制台后端（FastAPI API：策略库 / 回测 / portfolio / 看盘）
+├── cli/         命令行入口（fetch / backtest / scan / paper）
+└── frontend/    控制台前端（Vite + React + AntD）
 ```
 
 ## 开发
@@ -46,5 +48,6 @@ vgrid scan     --symbol 159920 --start 2024-01-01 --end 2025-01-01 --frame 1d \ 
                --spec examples/scan_159920.json --metric sharpe --top 10
 vgrid paper run    --symbol 159920 --config examples/159920.json --interval 15  # 启动模拟盘（盘中轮询）
 vgrid paper status                                                          # 查模拟盘状态
-vgrid paper serve --port 8000                                               # 启动看盘 Web 面板
+vgrid paper serve --port 8000                                          # 启动控制台后端（8000）
+cd frontend && npm run dev                                              # 启动控制台前端（5173 → 8000）
 ```
