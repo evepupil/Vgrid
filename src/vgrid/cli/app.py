@@ -26,6 +26,7 @@ from vgrid.paper import AkshareRealtimeProvider, PaperRunner
 from vgrid.report import render_report, render_summary
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
+from vgrid.web import create_app
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "paper":
         if args.paper_command == "run":
             return _cmd_paper_run(args)
+        if args.paper_command == "serve":
+            return _cmd_paper_serve(args)
         return _cmd_paper_status(args)
     return _cmd_backtest(args)
 
@@ -94,6 +97,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_status.add_argument(
         "--db", type=Path, default=None, help="SQLite 库路径（默认 ~/.vgrid/paper.sqlite）"
     )
+
+    p_serve = paper_sub.add_parser("serve", help="启动看盘 Web 面板")
+    p_serve.add_argument(
+        "--db", type=Path, default=None, help="SQLite 库路径（默认 ~/.vgrid/paper.sqlite）"
+    )
+    p_serve.add_argument("--host", default="127.0.0.1", help="监听地址")
+    p_serve.add_argument("--port", type=int, default=8000, help="监听端口")
     return parser
 
 
@@ -218,6 +228,17 @@ def _cmd_paper_status(args: argparse.Namespace) -> int:
     print(f"  已实现盈亏: {snap.realized_pnl}  手续费: {snap.total_fee}")
     print(f"  净现金流: {snap.cash_flow}  成交: {snap.n_fills} 笔")
     conn.close()
+    return 0
+
+
+def _cmd_paper_serve(args: argparse.Namespace) -> int:
+    import uvicorn  # noqa: PLC0415  懒导入，避免 cli 模块加载依赖 uvicorn
+
+    db = args.db or _default_db()
+    app = create_app(str(db))
+    print(f"看盘面板启动 · http://{args.host}:{args.port}（库 {db}）")
+    print("—— Ctrl+C 停止")
+    uvicorn.run(app, host=args.host, port=args.port)
     return 0
 
 
