@@ -23,6 +23,7 @@
 |---|---|
 | `provider.py` | `BarProvider` 协议 + `bars_from_columns` 纯函数（列 dict → list[Bar]） |
 | `akshare_provider.py` | `AkshareProvider`：调 akshare 取日线 / 分钟线，DataFrame → 列 dict |
+| `tencent_provider.py` | `TencentProvider`：直连腾讯 fqkline，ETF 前复权日线（em 不稳时的稳定兜底） |
 | `cache.py` | `ParquetCache`：每个 (symbol, frame) 一个 parquet 文件，存全量，读回复用 `bars_from_columns` |
 | `loader.py` | `load_bars` 门面：组合 provider + cache，区间命中 / 增量合并 / refresh |
 
@@ -42,11 +43,24 @@
     返回全量历史，故在本地按 ``date`` 列（先 ``astype(str)``，源里可能是 date 对象）字典序过滤
     到请求区间；symbol 要加前缀（5 开头沪市 ``sh``、其余深市 ``sz``），见 ``_sina_symbol``。
   - **em**：``fund_etf_hist_em``，前复权 ``qfq``，按 ``start_date/end_date``（``YYYYMMDD``）取数。
-    数据复权、回测更准，但 host 间歇被代理拦，不够稳定。
+    数据复权、回测更准，但实测东财 ``push2his`` host 服务端静默丢弃（TLS 通、HTTP 请求后 Empty reply，
+    非代理拦——补全浏览器 headers 无效），国内几乎必挂、海外也仅约 13% 成功率且触发频控后越请求越失败，
+    不作主力源。要用稳定复权源走 ``TencentProvider``。
 - 分钟线只有东财源（``fund_etf_hist_min_em``），不受 ``source`` 影响。
 - `_df_to_columns`：把列名（em 中文 日期/时间、开盘…；sina 英文 date/open…）映射成标准
   `ts/open/...`；列名对不上直接抛 `ValueError`。两源走同一条转换，上层无感。
 - akshare 的接口签名 / 列名随版本变，适配集中在本文件；真实环境跑前确认版本对得上。
+
+### tencent_provider.py（腾讯 fqkline 适配）
+- 腾讯 ``web.ifzq.gtimg.cn/appstock/app/fqkline/get``，国内实测稳定（连续 8/8 成功）、
+  首尔服务器也通，海外 IP 不被限——补 em 连不上的缺口。akshare 没封装腾讯 ETF，自己对接。
+- ``param=code,day,start,end,count,adjust``：``count`` 上限 640 根（区间内 >640 取最近 640），
+  故按年分段请求再合并（每年约 244 交易日，远低于上限），跨段边界按日期去重。
+- 字段顺序 ``date, open, close, high, low, volume``（``close`` 在第 3 位，和标准
+  ``open, high, low, close`` 不同，映射时挪位置——最容易翻车的点，单测重点覆盖）。
+- ``adjust``：``qfq``（默认，前复权）/ ``hfq`` / ``""``（不复权）；不同 adjust 走 JSON 里不同 key
+  （``qfqday`` / ``hfqday`` / ``day``）。
+- symbol 前缀同 sina：5 开头 ``sh``，其余 ``sz``。只支持日线。
 
 ### cache.py（Parquet 落盘）
 - 缓存目录 `~/.vgrid/cache/`，文件名 `<symbol>_<frame>.parquet`。
@@ -69,3 +83,9 @@
   日线加 ``"sina"`` 源作默认（新浪 host 稳定）。sina 返回不复权全量历史，本地按区间过滤、
   symbol 加 ``sh/sz`` 前缀；``em`` 源保留为可选（复权、更准但常被拦）。单测覆盖两源列适配、
   深沪前缀、按区间过滤（mock ak 不打网）。注意：sina 不复权 → 回测有除权缺口失真。
+- **2026-07-07（加腾讯源）**：em 源实测不稳——东财 ``push2his`` 服务端静默丢弃（非代理拦，
+  补全 headers 无效），国内几乎必挂、首尔服务器也仅约 13% 成功率且触发频控后越请求越失败；
+  baostock 实测不收 ETF（股票有数据、4 只 ETF 全 0 行）。改接腾讯 ``fqkline``：国内稳定、
+  首尔也通、支持前复权、ETF 友好。新增 ``TencentProvider``，按年分段绕开 640 根上限、
+  字段顺序映射（close 从第 3 位挪到标准位置）。单测覆盖字段映射、前缀、分段合并去重、
+  adjust、分钟线拒绝（mock requests 不打网）。
