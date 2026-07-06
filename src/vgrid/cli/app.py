@@ -23,6 +23,7 @@ from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
 from vgrid.report import render_report, render_summary
+from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,6 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "fetch":
         return _cmd_fetch(args)
+    if args.command == "scan":
+        return _cmd_scan(args)
     return _cmd_backtest(args)
 
 
@@ -46,6 +49,24 @@ def _build_parser() -> argparse.ArgumentParser:
     p_bt.add_argument("--config", type=Path, required=True, help="策略配置 JSON")
     p_bt.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
     p_bt.add_argument(
+        "--initial-cash",
+        type=Decimal,
+        default=None,
+        help="初始资金（默认用配置的 capital_cap）",
+    )
+
+    p_scan = sub.add_parser("scan", help="网格搜索参数扫描")
+    _add_data_args(p_scan)
+    p_scan.add_argument("--spec", type=Path, required=True, help="扫描规格 JSON（fixed + vary）")
+    p_scan.add_argument(
+        "--metric",
+        choices=["sharpe", "total_return", "annualized_return", "calmar"],
+        default="sharpe",
+        help="排序指标",
+    )
+    p_scan.add_argument("--top", type=int, default=10, help="终端 / 报告展示的 top-N")
+    p_scan.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+    p_scan.add_argument(
         "--initial-cash",
         type=Decimal,
         default=None,
@@ -98,10 +119,50 @@ def _cmd_backtest(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_config(path: Path) -> GridConfig:
+def _cmd_scan(args: argparse.Namespace) -> int:
+    frame = Frame(args.frame)
+    spec = ScanSpec.from_dict(_load_json(args.spec))
+    bars = load_bars(args.symbol, args.start, args.end, frame, refresh=args.refresh)
+    if not bars.bars:
+        print(f"{args.symbol} 在 {args.start} ~ {args.end} 无数据，无法扫描")
+        return 1
+
+    rows = run_scan(spec.expand(), bars, initial_cash=args.initial_cash)
+    ranked = rank(rows, args.metric)
+    top = min(args.top, len(ranked))
+    best = ranked[0]
+    best_result = simulate(best.config, bars, initial_cash=args.initial_cash)
+
+    print(f"扫描完成：{len(rows)} 组，按 `{args.metric}` 排序前 {top}：\n")
+    print(render_scan_report(ranked, args.metric, top, spec))
+    print("最优组合：")
+    print(render_summary(best_result, best.config))
+
+    scan_path = _write_report(
+        render_scan_report(ranked, args.metric, len(ranked), spec),
+        args.out,
+        f"scan_{args.symbol}",
+        args.frame,
+    )
+    best_path = _write_report(
+        render_report(best_result, best.config),
+        args.out,
+        f"best_{args.symbol}",
+        args.frame,
+    )
+    print(f"\n扫描报告：{scan_path}")
+    print(f"最优组合完整报告：{best_path}")
+    return 0
+
+
+def _load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as fh:
-        data: dict[str, Any] = json.load(fh)
-    return GridConfig.from_dict(data)
+        loaded: dict[str, Any] = json.load(fh)
+    return loaded
+
+
+def _load_config(path: Path) -> GridConfig:
+    return GridConfig.from_dict(_load_json(path))
 
 
 def _write_report(text: str, out_dir: Path, symbol: str, frame: str) -> Path:

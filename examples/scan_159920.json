@@ -1,0 +1,16 @@
+{
+  "fixed": {
+    "symbol": "159920",
+    "lower_price": "0.900",
+    "upper_price": "1.300",
+    "capital_cap": "50000",
+    "per_grid_amount": "3000"
+  },
+  "vary": {
+    "grid_count": [4, 6, 8, 10, 12],
+    "spacing_mode": ["arithmetic", "geometric"],
+    "base_build_mode": ["center", "zero"],
+    "upper_rebuild_ratio": ["0", "0.5", "1"],
+    "down_spacing_factor": ["1.0", "1.5", "2.0"]
+  }
+}
