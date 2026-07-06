@@ -1,6 +1,5 @@
-"""web —— FastAPI 看盘面板（读 SQLite，展示持仓 / 盈亏 / 成交 / 净值曲线）。"""
+"""web —— FastAPI 控制台后端（策略库 / 回测 / 组合 / 看盘）。"""
 
 from vgrid.web.server import create_app
-from vgrid.web.state import StateView, load_state
 
-__all__ = ["StateView", "create_app", "load_state"]
+__all__ = ["create_app"]
