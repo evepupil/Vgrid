@@ -56,7 +56,10 @@ export default function Watchlist() {
 
   const submitAdd = () => {
     const s = sym.trim()
-    if (s) add.mutate(s)
+    if (s) {
+      add.reset()
+      add.mutate(s)
+    }
   }
 
   return (
@@ -78,6 +81,11 @@ export default function Watchlist() {
         <button type="button" onClick={submitAdd} disabled={add.isPending || !sym.trim()}>
           + 关注
         </button>
+        {add.isError && (
+          <span className="wl-err" style={{ color: 'var(--up)' }}>
+            关注失败：{(add.error as Error)?.message ?? '未知错误'}
+          </span>
+        )}
       </div>
 
       <Panel className="rise d2">

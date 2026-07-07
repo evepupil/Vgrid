@@ -8,6 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from vgrid.web.etf_info import get_etf_name
 from vgrid.web.portfolio import InstanceView, PortfolioManager, WatchItem
 from vgrid.web.watchlist_enrich import WatchlistEnricher, enriched_to_dict
 
@@ -52,8 +53,16 @@ def watchlist_enriched(request: Request) -> list[dict[str, object]]:
 
 @router.post("/api/watchlist")
 def add_watch(body: WatchBody, request: Request) -> dict[str, object]:
-    _mgr(request).add_watch(body.symbol, body.name)
-    return {"symbol": body.symbol, "name": body.name}
+    """关注前先验证代码：``get_etf_name`` 查不到返 404、源挂返 503；有效则把名称一起存。"""
+    try:
+        etf_name = get_etf_name(body.symbol)
+    except OSError as e:
+        raise HTTPException(status_code=503, detail=f"ETF 验证服务暂不可用：{e}") from e
+    if etf_name is None:
+        raise HTTPException(status_code=404, detail=f"未找到 ETF：{body.symbol}")
+    name = body.name or etf_name
+    _mgr(request).add_watch(body.symbol, name)
+    return {"symbol": body.symbol, "name": name}
 
 
 @router.delete("/api/watchlist/{symbol}")

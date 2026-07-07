@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from vgrid.core.config import GridConfig
@@ -61,7 +62,11 @@ def test_runners(tmp_path: Path) -> None:
     assert r.json()[0]["status"] == "running"
 
 
-def test_watchlist_crud(tmp_path: Path) -> None:
+def test_watchlist_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "vgrid.web.routes.portfolio.get_etf_name",
+        lambda s: "恒生ETF" if s == "159920" else None,
+    )
     client = _client(tmp_path)
     assert client.get("/api/watchlist").json() == []
     r = client.post("/api/watchlist", json={"symbol": "159920", "name": "恒生"})
@@ -99,3 +104,27 @@ def test_invalid_mode_rejected(tmp_path: Path) -> None:
     """非法 mode 被 Literal 校验拦下返 422（FR-1.2）。"""
     r = _client(tmp_path).get("/api/portfolio/runners?mode=demo")
     assert r.status_code == 422
+
+
+def test_add_watch_unknown_symbol_404(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """代码不在 ETF 列表 → 404，不写库。"""
+    monkeypatch.setattr("vgrid.web.routes.portfolio.get_etf_name", lambda s: None)
+    client = _client(tmp_path)
+    r = client.post("/api/watchlist", json={"symbol": "999999"})
+    assert r.status_code == 404
+    assert client.get("/api/watchlist").json() == []
+
+
+def test_add_watch_fills_name_from_etf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """关注不传 name 时，用 get_etf_name 拉到的名称填进表（离线也有名字）。"""
+    monkeypatch.setattr(
+        "vgrid.web.routes.portfolio.get_etf_name",
+        lambda s: "恒生ETF" if s == "159920" else None,
+    )
+    r = _client(tmp_path).post("/api/watchlist", json={"symbol": "159920"})
+    assert r.status_code == 200
+    assert r.json()["name"] == "恒生ETF"
