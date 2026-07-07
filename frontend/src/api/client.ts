@@ -115,6 +115,27 @@ export async function previewLadder(
   return post<LadderView>('/api/ladder/preview', { config, price })
 }
 
+// 实时报价（FR-11.1 / 11.4）
+export interface Quote {
+  symbol: string
+  name: string | null
+  price: string
+  prev_close: string | null // 昨收
+  change: string | null // 涨跌额
+  change_pct: string | null // 涨跌幅（%）
+}
+
+export interface QuotesResponse {
+  quotes: Quote[]
+  error: string | null // 行情源失败时非空，前端降级为占位
+}
+
+/** 批量取多标的实时报价（现价 + 昨收 + 涨跌）。 */
+export async function getQuotes(symbols: string[]): Promise<QuotesResponse> {
+  if (symbols.length === 0) return { quotes: [], error: null }
+  return get<QuotesResponse>(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`)
+}
+
 // portfolio
 export interface PortfolioSummary {
   n_instances: number
@@ -179,10 +200,36 @@ export async function getEtfInfo(symbol: string): Promise<EtfInfo> {
 }
 
 // 单实例看盘
+export interface StateConfig {
+  symbol: string
+  lower_price: string
+  upper_price: string
+  grid_count: number
+  spacing_mode: string
+  base_build_mode: string
+  capital_cap: string
+  per_grid_amount: string
+}
+
+export interface StateSnapshot {
+  last_price: string | null
+  last_ts: string | null
+  open_lots: number
+  committed: string
+  realized_pnl: string // 已实现（累计套利）
+  unrealized_pnl: string // 浮动（持仓 mark-to-market）—— 与已实现分开
+  position_shares: number
+  position_value: string
+  avg_cost: string
+  total_fee: string
+  cash_flow: string
+  n_fills: number
+}
+
 export interface StateView {
   symbol: string
-  config: Record<string, unknown>
-  snapshot: Record<string, unknown>
+  config: StateConfig
+  snapshot: StateSnapshot
   metrics: {
     total_return: string
     max_drawdown: string

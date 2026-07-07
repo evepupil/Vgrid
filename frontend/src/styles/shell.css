@@ -517,13 +517,22 @@
   letter-spacing: 0.13em;
   color: var(--faint);
   text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
 }
 .kpi .v {
   font-family: var(--font-m);
   font-size: 21px;
   font-weight: 600;
   letter-spacing: 0.01em;
+}
+.kpi .s {
+  font-family: var(--font-m);
+  font-size: 11px;
   color: var(--dim);
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 /* ---------- 表格骨架 ---------- */
@@ -552,6 +561,107 @@ tbody td {
   padding: 8px 14px;
   border-bottom: 1px solid rgba(233, 231, 224, 0.05);
   color: var(--dim);
+}
+
+/* 标的切换 pills（Radix ToggleGroup） */
+.pills {
+  display: flex;
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+  width: max-content;
+}
+.pills button {
+  background: var(--panel);
+  border: none;
+  color: var(--dim);
+  font-family: var(--font-m);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 9px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  transition: 0.16s;
+  min-width: 120px;
+}
+.pills button:hover {
+  background: var(--raised);
+}
+.pills button[data-state='on'] {
+  background: var(--acc-bg);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--acc);
+}
+.pills button .c {
+  font-size: 9.5px;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+}
+.pills button[data-state='on'] .c {
+  color: var(--acc);
+}
+
+/* 标的头 */
+.inst {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.inst__id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.inst__id .code {
+  font-family: var(--font-m);
+  font-size: 13px;
+  color: var(--acc);
+  letter-spacing: 0.1em;
+}
+.inst__id .name {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.inst__id .tag {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.08em;
+}
+.inst__px {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-left: 22px;
+  border-left: 1px solid var(--hair);
+}
+.inst__px .p {
+  font-family: var(--font-m);
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: color 0.25s;
+}
+.inst__px .d {
+  font-family: var(--font-m);
+  font-size: 14px;
+}
+.legend {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  align-self: center;
+}
+.sw {
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  display: inline-block;
 }
 
 /* 标签 chip */
