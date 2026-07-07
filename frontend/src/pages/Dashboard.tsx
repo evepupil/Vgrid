@@ -9,6 +9,7 @@ import { KpiGrid } from '../components/KpiGrid'
 import { LadderPanel } from '../components/LadderPanel'
 import { Panel } from '../components/Panel'
 import { Placeholder } from '../components/Placeholder'
+import { RiskPanel } from '../components/RiskPanel'
 import { useMode } from '../mode/context'
 
 const KPIS = ['已实现盈亏', '浮动盈亏', '占用资金', '网格套利', '夏普', '运行'] as const
@@ -106,7 +107,11 @@ export default function Dashboard() {
           <Placeholder title="时间 · 方向 · 价格 · 份额 · 手续费 · 已实现" fr="FR-5.5（切3）" />
         </Panel>
         <Panel kick="风险敞口" en="RISK" meta="黑天鹅推演" className="rise d6">
-          <Placeholder title="占用/上限 · 黑天鹅推演 · 已实现÷浮动分离" fr="FR-6 风控（切8）" />
+          {selected && st ? (
+            <RiskPanel state={st} simMode={simMode} />
+          ) : (
+            <Placeholder title="占用/上限 · 黑天鹅推演 · 已实现÷浮动分离" fr="FR-6 风控" />
+          )}
         </Panel>
       </div>
     </div>

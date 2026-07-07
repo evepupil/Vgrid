@@ -1,0 +1,95 @@
+/* 风控 / 黑天鹅推演面板（FR-6）：占用条 + 推演格 + 说明。搬自原型 console.html。 */
+
+.risk {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rk {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.rk__t {
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--faint);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+}
+.bar {
+  height: 26px;
+  border: 1px solid var(--hair);
+  position: relative;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 25%,
+    var(--hair) 25% calc(25% + 1px)
+  );
+}
+.bar .fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--acc-bg), var(--acc-glow));
+  border-right: 2px solid var(--acc);
+  transition: right 0.35s;
+}
+.bar .txt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-family: var(--font-m);
+  font-size: 10.5px;
+}
+
+/* 推演格：3 档下跌 / 破下沿+最大占用 */
+.swan {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.swan.swan2 {
+  grid-template-columns: 1fr 1fr;
+}
+.swan div {
+  background: var(--panel);
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.swan .lab {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.swan .num {
+  font-family: var(--font-m);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.note {
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  color: var(--faint);
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+  border-left: 2px solid var(--hair2);
+  padding-left: 10px;
+}
+.note .up {
+  color: var(--up);
+}
+.note .down {
+  color: var(--down);
+}

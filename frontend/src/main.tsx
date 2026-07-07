@@ -13,6 +13,7 @@ import './styles/portfolio.css'
 import './styles/watchlist.css'
 import './styles/backtest.css'
 import './styles/strategies.css'
+import './styles/risk.css'
 import App from './App.tsx'
 
 const queryClient = new QueryClient()

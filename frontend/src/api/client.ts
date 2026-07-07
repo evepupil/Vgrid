@@ -348,10 +348,48 @@ export interface StateView {
   }[]
   n_ticks: number
   ladder: LadderView | null
+  risk: RiskReport | null // 风控 / 黑天鹅推演（FR-6），无现价为 null
+}
+
+// 风控 / 黑天鹅推演（FR-6）
+export interface RiskReport {
+  occupancy: {
+    committed: string
+    capital_cap: string
+    ratio_pct: string // 占比%
+    buffer_pct: string // 兜底剩余%
+  }
+  scenarios: {
+    drop_pct: string // 跌幅（0.10=−10%）
+    scenario_price: string
+    position_loss: string // 持仓浮亏增量（正数）
+    projected_unrealized: string // 推演后浮动
+  }[]
+  amplification: {
+    lower_price: string
+    down_spacing_factor: string
+    down_amount_factor: string
+    enabled: boolean
+    note: string
+  }
+  max_occupancy: string // = capital_cap
 }
 
 export async function getState(db: string): Promise<StateView> {
   return get<StateView>(`/api/state?db=${encodeURIComponent(db)}`)
+}
+
+// 市场时段（FR-11.2）
+export interface MarketStatus {
+  market: string
+  status: 'trading' | 'lunch' | 'pre_open' | 'closed' | 'weekend'
+  label: string // 中文
+  now: string
+  note: string
+}
+
+export async function getMarketStatus(market = '沪深'): Promise<MarketStatus> {
+  return get<MarketStatus>(`/api/market/status?market=${encodeURIComponent(market)}`)
 }
 
 // helpers
