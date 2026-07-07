@@ -126,3 +126,37 @@ def test_desired_orders_reflect_state(make_config: MakeConfig) -> None:
     assert len(sells) == 2
     assert len(buys) == 2
     assert {o.price for o in buys} == {Decimal("1.050"), Decimal("1.000")}
+
+
+def test_tight_cap_keeps_positions_contiguous(make_config: MakeConfig) -> None:
+    """紧资金上限 + down_amount_factor<1：触及上限即停，不跳过去买更便宜的下格。
+
+    回归 #1：曾用 continue，导致买出 {0.95, 0.85} 这种漏掉 0.90 的非连续持仓，
+    且与 desired_orders 的 break 口径漂移。改 break 后只买到就近能买的一格。
+    """
+    engine = GridEngine(
+        make_config(
+            base_build_mode=BaseBuildMode.ZERO,
+            down_amount_factor=Decimal("0.5"),
+            down_spacing_factor=Decimal("1"),
+            capital_cap=Decimal("1200"),
+        )
+    )
+    engine.start(Decimal("1.00"))
+    engine.step(Decimal("0.80"))
+
+    buy_prices = {lot.buy_price for lot in engine.open_positions}
+    assert buy_prices == {Decimal("0.950")}  # 只买到就近一格，没跳买更低的 0.85
+
+
+def test_desired_orders_is_read_only(make_config: MakeConfig) -> None:
+    """回归 #2：desired_orders 是只读查询，不能偷偷向下延伸阶梯。"""
+    engine = GridEngine(make_config(base_build_mode=BaseBuildMode.ZERO))
+    engine.start(Decimal("1.00"))
+    before_bottom = engine.ladder.bottom
+    before_len = len(engine.ladder.lines)
+
+    engine.desired_orders(Decimal("0.80"))  # 远低于下沿，旧实现会在此永久延伸阶梯
+
+    assert engine.ladder.bottom == before_bottom
+    assert len(engine.ladder.lines) == before_len

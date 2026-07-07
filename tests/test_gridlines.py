@@ -8,7 +8,6 @@ from vgrid.core.enums import SpacingMode
 from vgrid.strategy.gridlines import (
     bottom_gap,
     build_levels,
-    extend_levels_down,
     shift_window_up,
 )
 
@@ -42,24 +41,6 @@ def test_too_dense_raises() -> None:
 def test_bottom_gap() -> None:
     levels = build_levels(Decimal("1.00"), Decimal("1.20"), 4, SpacingMode.ARITHMETIC)
     assert bottom_gap(levels) == Decimal("0.050")
-
-
-def test_extend_down_uniform_when_factor_one() -> None:
-    lines = extend_levels_down(Decimal("1.00"), Decimal("0.05"), Decimal("1"), depth=3)
-    assert lines == [Decimal("0.950"), Decimal("0.900"), Decimal("0.850")]
-
-
-def test_extend_down_widens_with_factor() -> None:
-    lines = extend_levels_down(Decimal("1.00"), Decimal("0.05"), Decimal("2"), depth=3)
-    # 间距 0.05 → 0.10 → 0.20，越跌格子越宽
-    assert lines == [Decimal("0.950"), Decimal("0.850"), Decimal("0.650")]
-
-
-def test_extend_down_respects_floor() -> None:
-    lines = extend_levels_down(
-        Decimal("1.00"), Decimal("0.10"), Decimal("1"), depth=5, floor=Decimal("0.80")
-    )
-    assert lines == [Decimal("0.900"), Decimal("0.800")]
 
 
 def test_shift_up_arithmetic() -> None:

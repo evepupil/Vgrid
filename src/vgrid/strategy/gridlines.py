@@ -4,11 +4,14 @@
 - 一条「阶梯」是从低到高排好的一串网格线价格 ``levels``，``levels[0]`` 最低。
 - 相邻两条线之间是一个「格子」，第 i 个格子在 ``levels[i]`` 和 ``levels[i+1]`` 之间。
 
-本模块提供四块能力：
+本模块提供三块能力：
 1. ``build_levels``    —— 按等差 / 等比生成基准阶梯。
 2. ``bottom_gap``      —— 取基准阶梯最底部那格的间距，作为向下延伸的起始步长。
-3. ``extend_levels_down`` —— 跌破下沿后往下延伸，间距逐级放大（防无限补仓）。
-4. ``shift_window_up`` —— 冲破上沿后整窗上移，保持几何形状不变（追踪）。
+3. ``shift_window_up`` —— 冲破上沿后整窗上移，保持几何形状不变（追踪）。
+
+向下延伸（跌破下沿后逐级放大格距）的实现在 ``ladder.Ladder._extend_one``——它要按
+深度放大每格金额，是有状态的增量操作，放在 ``Ladder`` 里更合适，不在这里再放一份
+纯函数，免得两处实现分叉。
 """
 
 from decimal import ROUND_CEILING, Decimal
@@ -63,45 +66,6 @@ def bottom_gap(levels: list[Decimal]) -> Decimal:
     if len(levels) < 2:  # noqa: PLR2004 —— 至少两条线才谈得上间距
         raise ValueError("阶梯至少要有两条网格线")
     return levels[1] - levels[0]
-
-
-def extend_levels_down(
-    bottom_level: Decimal,
-    base_gap: Decimal,
-    factor: Decimal,
-    depth: int,
-    price_tick: Decimal = PRICE_TICK,
-    floor: Decimal | None = None,
-) -> list[Decimal]:
-    """从 ``bottom_level`` 往下延伸 ``depth`` 条网格线，间距逐级放大。
-
-    第 k 条（k 从 1 数）与上一条的间距 = ``base_gap × factor^(k-1)``：
-    - ``factor == 1``：间距恒等于 ``base_gap``，等于把底部那格无限往下复制（不放大）。
-    - ``factor > 1``：越往下格子越宽，减速下探，防止跌起来无限补仓。
-
-    ``floor`` 给定时，不生成低于它的网格线（价格地板）。
-    返回从高到低排列（紧挨 ``bottom_level`` 的那条在最前）。
-    """
-    if factor < 1:
-        raise ValueError(f"格距放大系数必须 ≥ 1：{factor}")
-    if base_gap <= 0:
-        raise ValueError(f"起始间距必须为正：{base_gap}")
-
-    out: list[Decimal] = []
-    price = bottom_level
-    gap = base_gap
-    for _ in range(depth):
-        price = price - gap
-        if price <= 0 or (floor is not None and price < floor):
-            break
-        level = quantize_price(price, price_tick)
-        if out and level >= out[-1]:
-            break  # 量化后与上一条重合，停止延伸
-        if not out and level >= bottom_level:
-            break
-        out.append(level)
-        gap = gap * factor
-    return out
 
 
 def shift_window_up(

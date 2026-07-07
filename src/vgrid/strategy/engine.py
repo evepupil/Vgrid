@@ -126,6 +126,10 @@ class GridEngine:
     def desired_orders(self, price: Decimal) -> list[OrderIntent]:
         """当前状态下「应该挂着」的限价单集合（供实盘执行层对账用）。
 
+        **只读**：只反映当前阶梯状态，不改任何状态。阶梯的向下延伸由 ``step`` 按
+        真实价格驱动——一个「看一眼」的方法不该偷偷延伸阶梯、污染后续 ``step`` 与
+        持久化状态。所以对账前应先 ``step`` 到当前价，再 ``desired_orders``。
+
         与 ``step`` 共用同一套决策口径：卖单挂在每个持仓单元的目标价；买单挂在
         现价下方的空格子上，受资金上限约束（就近优先，占满即止）。
         """
@@ -134,7 +138,6 @@ class GridEngine:
             lot = self._lots[target]
             orders.append(OrderIntent(Side.SELL, target, lot.shares, self._ladder.index_of(target)))
 
-        self._ladder.ensure_covers_down_to(price)
         projected = self._committed
         for line in sorted(self._ladder.lines, key=lambda ln: ln.price, reverse=True):
             if line.price >= price:
@@ -171,7 +174,7 @@ class GridEngine:
                 continue
             fill = self._execute_buy(line.price, shares, target_line.price)
             if fill is None:
-                continue  # 触及资金上限，停止在更低的格子继续买
+                break  # 触及资金上限，停止在更低的格子继续买（与 desired_orders 同口径）
             fills.append(fill)
         return fills
 

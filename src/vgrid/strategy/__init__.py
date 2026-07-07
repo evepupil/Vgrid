@@ -7,7 +7,6 @@ from vgrid.strategy.engine import GridEngine
 from vgrid.strategy.gridlines import (
     bottom_gap,
     build_levels,
-    extend_levels_down,
     shift_window_up,
 )
 from vgrid.strategy.ladder import GridLine, Ladder
@@ -18,6 +17,5 @@ __all__ = [
     "Ladder",
     "bottom_gap",
     "build_levels",
-    "extend_levels_down",
     "shift_window_up",
 ]
