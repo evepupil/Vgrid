@@ -9,6 +9,7 @@ from vgrid.backtest.result import EquityPoint
 from vgrid.core.models import Fill
 from vgrid.store.db import connect
 from vgrid.web.jsonify import jsonify
+from vgrid.web.ladder_api import ladder_to_dict
 from vgrid.web.state import FillMark, StateView, load_state
 
 router = APIRouter(tags=["state"])
@@ -38,6 +39,7 @@ def _state_to_dict(view: StateView) -> dict[str, object]:
         "equity_curve": [_point_to_dict(p) for p in view.equity_curve],
         "fill_marks": [_mark_to_dict(m) for m in view.fill_marks],
         "n_ticks": view.n_ticks,
+        "ladder": ladder_to_dict(view.ladder) if view.ladder is not None else None,
     }
 
 

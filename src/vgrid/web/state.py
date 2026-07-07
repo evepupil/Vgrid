@@ -23,6 +23,7 @@ from vgrid.core.models import Fill
 from vgrid.core.money import shares_for_amount
 from vgrid.store.repository import load_config, load_fills, load_ticks
 from vgrid.strategy.engine import GridEngine
+from vgrid.strategy.ladder_view import LadderView, build_ladder_view
 from vgrid.web.curve import downsample
 
 
@@ -49,6 +50,7 @@ class StateView:
     equity_curve: list[EquityPoint]
     fill_marks: list[FillMark]
     n_ticks: int
+    ladder: LadderView | None
 
 
 def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateView | None:
@@ -108,6 +110,9 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         "cash_flow": engine.cash_flow,
         "n_fills": len(fills),
     }
+    # replay 后的 engine 停在当前实时状态，直接抽出带真实持仓的阶梯
+    ladder = build_ladder_view(engine, ticks[-1][1]) if ticks else None
+
     return StateView(
         symbol=config.symbol,
         config=_config_summary(config),
@@ -122,6 +127,7 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         equity_curve=sampled,
         fill_marks=fill_marks,
         n_ticks=len(ticks),
+        ladder=ladder,
     )
 
 

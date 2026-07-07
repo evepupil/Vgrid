@@ -71,3 +71,14 @@ def test_metrics_populated() -> None:
     assert view is not None
     for key in ("total_return", "max_drawdown", "sharpe", "buy_hold_return"):
         assert key in view.metrics
+
+
+def test_ladder_present_from_replayed_engine() -> None:
+    conn = connect()
+    _seed(conn)  # ZERO 模式，末价 1.10
+    view = load_state(conn)
+    assert view is not None
+    assert view.ladder is not None
+    assert view.ladder.current_price == Decimal("1.10")
+    assert view.ladder.window_lower == Decimal("1.00")
+    assert len(view.ladder.rungs) >= 5  # 至少基准 5 条线

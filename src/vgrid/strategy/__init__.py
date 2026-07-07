@@ -10,12 +10,16 @@ from vgrid.strategy.gridlines import (
     shift_window_up,
 )
 from vgrid.strategy.ladder import GridLine, Ladder
+from vgrid.strategy.ladder_view import LadderRung, LadderView, build_ladder_view
 
 __all__ = [
     "GridEngine",
     "GridLine",
     "Ladder",
+    "LadderRung",
+    "LadderView",
     "bottom_gap",
+    "build_ladder_view",
     "build_levels",
     "shift_window_up",
 ]

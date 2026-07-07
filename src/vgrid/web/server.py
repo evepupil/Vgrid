@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import etf as etf_router
+from vgrid.web.routes import ladder as ladder_router
 from vgrid.web.routes import portfolio as portfolio_router
 from vgrid.web.routes import state as state_router
 from vgrid.web.routes import strategies as strategies_router
@@ -49,6 +50,7 @@ def create_app(
     app.include_router(backtest_router.router)
     app.include_router(portfolio_router.router)
     app.include_router(etf_router.router)
+    app.include_router(ladder_router.router)
 
     if frontend_dist is not None and frontend_dist.exists():
         dist_resolved = frontend_dist.resolve()
