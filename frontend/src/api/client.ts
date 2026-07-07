@@ -238,6 +238,8 @@ export interface StateView {
   }
   fills: Fill[]
   equity_curve: EquityPoint[]
+  drawdown_curve: { ts: string; drawdown: string }[] // 逐点回撤比例（<=0）
+  buy_hold_curve: { ts: string; equity: string }[] // 买入持有逐点权益
   fill_marks: {
     index: number
     side: 'buy' | 'sell'

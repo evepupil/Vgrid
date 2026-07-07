@@ -1,0 +1,47 @@
+/* 净值图区：指标行 + uPlot 主机容器 + 终端风格覆盖 uPlot 默认样式 */
+.eq {
+  padding: 14px 16px 10px;
+}
+.eq__row {
+  display: flex;
+  gap: 26px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.eq__stat .k {
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.eq__stat .v {
+  font-family: var(--font-m);
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 3px;
+}
+.eq__split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 2px;
+}
+
+/* uPlot 主机 */
+.uplot-host {
+  width: 100%;
+}
+/* uPlot 内部：透明背景、等宽轴字、去掉默认边框，贴终端皮 */
+.uplot,
+.uplot * {
+  font-family: var(--font-m) !important;
+}
+.uplot .u-title,
+.uplot .u-legend {
+  display: none;
+}
+.uplot .u-over,
+.uplot .u-under {
+  background: transparent;
+}

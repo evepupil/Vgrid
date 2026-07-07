@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getQuotes, getState, listRunners } from '../api/client'
+import { EquityChart } from '../components/EquityChart'
 import { GridLadder } from '../components/GridLadder'
 import { InstrumentHeader } from '../components/InstrumentHeader'
 import { KpiGrid } from '../components/KpiGrid'
@@ -79,8 +80,12 @@ export default function Dashboard() {
         >
           {st?.ladder ? <GridLadder view={st.ladder} /> : <LadderPanel />}
         </Panel>
-        <Panel kick="净值曲线" en="EQUITY" meta="日线" className="rise d4">
-          <Placeholder title="净值 · 回撤 · 买入持有对照" fr="FR-5.1 / 5.2 / 5.3（切3）" />
+        <Panel kick="净值曲线" en="EQUITY" meta={st ? '实例实时' : '日线'} className="rise d4">
+          {st ? (
+            <EquityChart state={st} />
+          ) : (
+            <Placeholder title="净值 · 回撤 · 买入持有对照" fr="FR-5.1 / 5.2 / 5.3" />
+          )}
         </Panel>
       </div>
 
