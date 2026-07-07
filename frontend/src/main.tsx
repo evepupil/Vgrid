@@ -2,9 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ConfigProvider } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
-import './index.css'
+import { ModeProvider } from './mode/ModeProvider'
+import './styles/tokens.css'
+import './styles/base.css'
+import './styles/shell.css'
 import App from './App.tsx'
 
 const queryClient = new QueryClient()
@@ -12,11 +13,11 @@ const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider locale={zhCN}>
+      <ModeProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
-      </ConfigProvider>
+      </ModeProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

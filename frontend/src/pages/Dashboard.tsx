@@ -1,90 +1,53 @@
-import { useQuery } from '@tanstack/react-query'
-import { Card, Col, Empty, Row, Statistic, Table, Tag } from 'antd'
-import type { TableProps } from 'antd'
-import { Link } from 'react-router-dom'
-import {
-  getPortfolioSummary,
-  listRunners,
-  type InstanceView,
-} from '../api/client'
+import { Panel } from '../components/Panel'
+import { Placeholder } from '../components/Placeholder'
+import { useMode } from '../mode/context'
 
-type Columns<T> = NonNullable<TableProps<T>['columns']>
+// 六格 KPI（标签已知，值待接入）
+const KPIS = ['已实现盈亏', '浮动盈亏', '占用资金', '网格套利', '夏普', '运行'] as const
 
+/** 仪表盘（单实例看盘）。切 0 为骨架，各面板标注待接入的需求编号。 */
 export default function Dashboard() {
-  const summary = useQuery({
-    queryKey: ['portfolio', 'summary'],
-    queryFn: getPortfolioSummary,
-    refetchInterval: 5000,
-  })
-  const runners = useQuery({
-    queryKey: ['portfolio', 'runners'],
-    queryFn: listRunners,
-    refetchInterval: 5000,
-  })
-  const s = summary.data
-
-  const columns: Columns<InstanceView> = [
-    { title: '名称', dataIndex: 'name' },
-    { title: '标的', dataIndex: 'symbol' },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      render: (v) => (
-        <Tag color={v === 'running' ? 'green' : 'default'}>{v}</Tag>
-      ),
-    },
-    { title: '权益', dataIndex: 'equity' },
-    { title: '已实现盈亏', dataIndex: 'realized_pnl' },
-    { title: '最新价', dataIndex: 'last_price', render: (v) => v ?? '—' },
-    { title: '持仓格数', dataIndex: 'open_lots' },
-  ]
-
+  const { mode } = useMode()
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Row gutter={16}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="总资产" value={s?.total_equity ?? '—'} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="在跑实例"
-              value={s?.n_running ?? 0}
-              suffix={`/ ${s?.n_instances ?? 0}`}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="累计已实现盈亏" value={s?.total_realized_pnl ?? '—'} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="累计手续费" value={s?.total_fee ?? '—'} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card
-        title="模拟盘实例"
-        extra={<Link to="/runners">看盘 →</Link>}
+    <div className="view">
+      <Panel
+        kick="标的看盘"
+        en="INSTRUMENT"
+        meta={mode === 'sim' ? '模拟盘' : '实盘'}
+        className="rise d1"
       >
-        {runners.data && runners.data.length > 0 ? (
-          <Table
-            size="small"
-            dataSource={runners.data}
-            loading={runners.isLoading}
-            rowKey="name"
-            columns={columns}
-            pagination={false}
+        <Placeholder title="标的切换器 · 实时价 · 涨跌" fr="FR-3.1 / FR-11.1" />
+      </Panel>
+
+      <div className="kpis rise d2">
+        {KPIS.map((k) => (
+          <div className="kpi" key={k}>
+            <div className="k">{k}</div>
+            <div className="v">——</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hero">
+        <Panel kick="网格阶梯" en="GRID LADDER" meta="区间 / 步长 待接入" className="rise d3">
+          <Placeholder
+            title="卖单格 · 买单格 · 排队格 · 放大区 · 资金上限线 · 现价位置"
+            fr="FR-4 网格阶梯"
           />
-        ) : (
-          <Empty description="还没有模拟盘实例。用 vgrid paper run --db 启动一个" />
-        )}
-      </Card>
+        </Panel>
+        <Panel kick="净值曲线" en="EQUITY" meta="日线" className="rise d4">
+          <Placeholder title="净值 · 回撤 · 买入持有对照" fr="FR-5.1 / 5.2 / 5.3" />
+        </Panel>
+      </div>
+
+      <div className="low">
+        <Panel kick="成交流水" en="FILLS" className="rise d5">
+          <Placeholder title="时间 · 方向 · 价格 · 份额 · 手续费 · 已实现" fr="FR-5.5" />
+        </Panel>
+        <Panel kick="风险敞口" en="RISK" meta="黑天鹅推演" className="rise d6">
+          <Placeholder title="占用/上限 · 黑天鹅推演 · 已实现÷浮动分离" fr="FR-6 风控" />
+        </Panel>
+      </div>
     </div>
   )
 }

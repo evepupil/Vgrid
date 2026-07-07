@@ -1,0 +1,41 @@
+/* 设计令牌：颜色 / 字体 / 尺寸。实盘=琥珀，模拟盘=青，靠 --acc 一处切换。 */
+:root {
+  --bg: #0a0b0e;
+  --panel: #0f1217;
+  --raised: #141922;
+  --raised2: #191f29;
+  --hair: rgba(233, 231, 224, 0.09);
+  --hair2: rgba(233, 231, 224, 0.17);
+  --grid: rgba(233, 231, 224, 0.032);
+  --ink: #eceae3;
+  --dim: #98a0ac;
+  --faint: #59616d;
+  --amber: #f5b62c;
+  --cyan: #2ad4c4;
+
+  /* 强调色：随交易模式切换（见下） */
+  --acc: #f5b62c;
+  --acc-bg: rgba(245, 182, 44, 0.12);
+  --acc-glow: rgba(245, 182, 44, 0.22);
+  --acc-ink: #161200;
+
+  /* 红涨绿跌（中国惯例）：红=涨/买盘，绿=跌/卖盘 */
+  --up: #ff5257;
+  --up-bg: rgba(255, 82, 87, 0.12);
+  --down: #25c281;
+  --down-bg: rgba(37, 194, 129, 0.12);
+
+  --font-d: 'Chakra Petch', 'Microsoft YaHei', sans-serif;
+  --font-m: 'IBM Plex Mono', 'Microsoft YaHei', monospace;
+
+  --rail: 64px;
+  --topbar: 52px;
+}
+
+/* 模拟盘：整套强调色由琥珀切成青 */
+[data-mode='sim'] {
+  --acc: #2ad4c4;
+  --acc-bg: rgba(42, 212, 196, 0.12);
+  --acc-glow: rgba(42, 212, 196, 0.24);
+  --acc-ink: #00201d;
+}

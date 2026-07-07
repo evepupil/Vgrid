@@ -1,69 +1,37 @@
-import { Layout, Menu } from 'antd'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
-import Dashboard from './pages/Dashboard'
+import { Route, Routes } from 'react-router-dom'
+import { Background } from './components/Background'
+import { Rail } from './components/Rail'
+import { SimBanner } from './components/SimBanner'
+import { Ticker } from './components/Ticker'
+import { Topbar } from './components/Topbar'
 import Backtest from './pages/Backtest'
+import Dashboard from './pages/Dashboard'
+import Portfolio from './pages/Portfolio'
 import Strategies from './pages/Strategies'
-import Runners from './pages/Runners'
 import Watchlist from './pages/Watchlist'
 
-const { Sider, Content } = Layout
-
-const NAV = [
-  { path: '/', label: '仪表盘' },
-  { path: '/backtest', label: '回测' },
-  { path: '/strategies', label: '策略库' },
-  { path: '/runners', label: '模拟盘' },
-  { path: '/watchlist', label: '关注列表' },
-] as const
-
-function App() {
-  const location = useLocation()
-  const current =
-    NAV.find(
-      (n) =>
-        n.path === location.pathname ||
-        (n.path !== '/' && location.pathname.startsWith(n.path)),
-    )?.path ?? '/'
-
+/** 应用外壳：背景层 + 左导航 + 顶栏/行情/模拟横幅 + 路由舞台。 */
+export default function App() {
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={180} breakpoint="lg" collapsible>
-        <div
-          style={{
-            color: '#fff',
-            padding: '20px 16px',
-            fontSize: '20px',
-            fontWeight: 600,
-            letterSpacing: 1,
-          }}
-        >
-          Vgrid
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[current]}
-          items={NAV.map((n) => ({
-            key: n.path,
-            label: <Link to={n.path}>{n.label}</Link>,
-          }))}
-        />
-      </Sider>
-      <Layout>
-        <Content style={{ padding: 24, background: '#f0f2f5' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <>
+      <Background />
+      <div className="app">
+        <Rail />
+        <div className="main">
+          <Topbar />
+          <Ticker />
+          <SimBanner />
+          <div className="stage">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/backtest" element={<Backtest />} />
               <Route path="/strategies" element={<Strategies />} />
-              <Route path="/runners" element={<Runners />} />
               <Route path="/watchlist" element={<Watchlist />} />
             </Routes>
           </div>
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+      </div>
+    </>
   )
 }
-
-export default App
