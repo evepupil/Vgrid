@@ -1,3 +1,4 @@
+import { LadderPanel } from '../components/LadderPanel'
 import { Panel } from '../components/Panel'
 import { Placeholder } from '../components/Placeholder'
 import { useMode } from '../mode/context'
@@ -29,11 +30,8 @@ export default function Dashboard() {
       </div>
 
       <div className="hero">
-        <Panel kick="网格阶梯" en="GRID LADDER" meta="区间 / 步长 待接入" className="rise d3">
-          <Placeholder
-            title="卖单格 · 买单格 · 排队格 · 放大区 · 资金上限线 · 现价位置"
-            fr="FR-4 网格阶梯"
-          />
+        <Panel kick="网格阶梯" en="GRID LADDER" meta="策略预览" className="rise d3">
+          <LadderPanel />
         </Panel>
         <Panel kick="净值曲线" en="EQUITY" meta="日线" className="rise d4">
           <Placeholder title="净值 · 回撤 · 买入持有对照" fr="FR-5.1 / 5.2 / 5.3" />

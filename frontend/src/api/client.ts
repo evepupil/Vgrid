@@ -86,6 +86,35 @@ export async function runBacktest(body: BacktestBody): Promise<BacktestResult> {
   return post<BacktestResult>('/api/backtest', body)
 }
 
+// 网格阶梯（FR-4）
+export type LadderKind = 'sell' | 'buy' | 'capped' | 'idle'
+
+export interface LadderRung {
+  price: string
+  depth: number // 0=基准窗口，>0=向下放大区
+  kind: LadderKind
+  held_shares: number // kind==sell 时>0
+}
+
+export interface LadderView {
+  rungs: LadderRung[] // 低→高
+  current_price: string
+  cap_price: string | null // 资金上限触及价，无则 null
+  window_lower: string
+  window_upper: string
+  step: string
+  grid_count: number
+  spacing_mode: string
+}
+
+/** 按 config 在某价位预览一条阶梯（缺省价用窗口中点）。 */
+export async function previewLadder(
+  config: StrategyConfig,
+  price: string | null = null,
+): Promise<LadderView> {
+  return post<LadderView>('/api/ladder/preview', { config, price })
+}
+
 // portfolio
 export interface PortfolioSummary {
   n_instances: number
@@ -170,6 +199,7 @@ export interface StateView {
     realized_pnl?: string
   }[]
   n_ticks: number
+  ladder: LadderView | null
 }
 
 export async function getState(db: string): Promise<StateView> {

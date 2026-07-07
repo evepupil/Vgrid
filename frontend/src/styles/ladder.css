@@ -1,0 +1,158 @@
+/* 网格阶梯工程图：绝对定位的网格线 + 现价线 + 资金上限线 + 放大区标注。
+   卖单格绿、买单格红（红涨绿跌）、排队格虚线、放大区琥珀虚线。 */
+.ladder {
+  position: relative;
+  height: 560px;
+  padding: 10px 0;
+}
+.ladwrap {
+  position: relative;
+  height: 100%;
+  margin: 0 82px 0 96px;
+}
+
+.rung {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+}
+.rung .line {
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+.rung .px {
+  position: absolute;
+  right: -76px;
+  width: 68px;
+  text-align: left;
+  font-family: var(--font-m);
+  font-size: 11px;
+  color: var(--faint);
+  letter-spacing: 0.03em;
+}
+.rung .ord {
+  position: absolute;
+  height: 19px;
+  top: -9.5px;
+  left: -92px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-m);
+  font-size: 10px;
+  padding: 0 7px;
+  border: 1px solid;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.rung.sell .ord {
+  color: var(--down);
+  border-color: rgba(37, 194, 129, 0.35);
+  background: var(--down-bg);
+}
+.rung.sell .line {
+  background: linear-gradient(90deg, transparent, rgba(37, 194, 129, 0.25));
+}
+.rung.buy .ord {
+  color: var(--up);
+  border-color: rgba(255, 82, 87, 0.35);
+  background: var(--up-bg);
+}
+.rung.buy .line {
+  background: linear-gradient(90deg, transparent, rgba(255, 82, 87, 0.22));
+}
+.rung.capped .ord {
+  color: var(--faint);
+  border-color: var(--hair);
+  background: transparent;
+}
+.rung.capped .line {
+  background: repeating-linear-gradient(90deg, var(--hair) 0 4px, transparent 4px 9px);
+}
+/* 放大区（depth>0）：价格标签转琥珀，线叠加琥珀虚线感 */
+.rung.ext .px {
+  color: var(--acc);
+  opacity: 0.75;
+}
+.rung.ext .line {
+  background: repeating-linear-gradient(90deg, var(--acc-glow) 0 5px, transparent 5px 11px);
+}
+
+.zone {
+  position: absolute;
+  right: -80px;
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+  color: var(--acc);
+  opacity: 0.75;
+}
+
+.capline {
+  position: absolute;
+  left: -96px;
+  right: -82px;
+  height: 0;
+  border-top: 1px dashed var(--acc-glow);
+}
+.capline .cl {
+  position: absolute;
+  left: 0;
+  top: -8px;
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--acc);
+  letter-spacing: 0.1em;
+  background: var(--panel);
+  padding: 0 4px;
+}
+
+.now {
+  position: absolute;
+  left: -96px;
+  right: -82px;
+  height: 0;
+  z-index: 5;
+}
+.now .nl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--acc);
+  box-shadow: 0 0 12px var(--acc-glow);
+}
+.now .flag {
+  position: absolute;
+  right: -80px;
+  top: -11px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-m);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acc-ink);
+  background: var(--acc);
+  padding: 0 8px;
+  letter-spacing: 0.02em;
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 10% 100%, 0 50%);
+}
+.now .tri {
+  position: absolute;
+  left: 0;
+  top: -4px;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-left-color: var(--acc);
+}

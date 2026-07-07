@@ -6,6 +6,7 @@ import { ModeProvider } from './mode/ModeProvider'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/shell.css'
+import './styles/ladder.css'
 import App from './App.tsx'
 
 const queryClient = new QueryClient()
