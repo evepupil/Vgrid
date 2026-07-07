@@ -29,6 +29,8 @@
   tick 在 `process_tick` 里 `start`。
 - **process_tick(ts, price)**：`save_tick` → 首个 tick `engine.start`（CENTER 模式含建仓成交，ZERO
   零成交），之后 `engine.step` 产 fills → `save_fill`。是纯逻辑测试入口（不调 provider、不判 session）。
+  若注入了 `Notifier`（切10a），fills 非空时把信号推出去（只通知不真下单），推送失败 `except OSError`
+  打日志、不中断模拟盘。
 - **run()**：`replay` 后长驻循环；盘中 `step_once`（fetch + `process_tick`）+ `sleep(interval)`，
   盘外 sleep 到下一开盘（至多 60s 重判，防时钟漂移）。
 - **配置一致性**：`__init__` 校验 DB 已存配置与传入一致，不一致报错（防误用）。
@@ -40,5 +42,8 @@
 - **2026-07-06（M4a 首次实现）**：realtime provider（akshare + 协议）、session（A 股时段）、
   runner（replay + process_tick + run + snapshot）。单测覆盖首次 start 零成交、tick 驱动买卖
   落库、replay 状态一致、配置不一致报错、时段判断（盘内 / 盘前 / 午休 / 盘后 / 周末）。
-- **2026-07-06（M4a 修复）**：`process_tick` 首个 tick 的 start 成交（CENTER 建仓）原被丢弃，
+- **2026-07-06（M4a 修复）**：`process_tick` 首个 tick 的 start 成交（CENTER 建仓）原被丢弃,
   改成落库；补 CENTER 建仓单测。
+- **2026-07-07（切10a 推送）**：`PaperRunner.__init__` 加可选 `notifier: Notifier | None`；
+  `process_tick` 出 fills 后推送（切10a 半自动实盘：只通知不真下单），推送失败降级不中断盘。
+  详见 [notify 模块](./notify.md)。切10b 的光大 QMT 真实下单在此接口位置替换 Notifier。

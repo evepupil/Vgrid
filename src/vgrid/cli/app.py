@@ -23,6 +23,7 @@ from vgrid.backtest import simulate
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
+from vgrid.notify import make_notifier
 from vgrid.paper import AkshareRealtimeProvider, PaperRunner
 from vgrid.report import render_report, render_summary
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
@@ -107,6 +108,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--db", type=Path, default=None, help="SQLite 库路径（默认 ~/.vgrid/paper.sqlite）"
     )
     p_run.add_argument("--interval", type=float, default=15.0, help="轮询间隔秒")
+    p_run.add_argument(
+        "--notify",
+        choices=["serverchan", "pushplus"],
+        default=None,
+        help="网格触发推送通道（半自动实盘，只通知不下单；凭证走环境变量）",
+    )
 
     p_status = paper_sub.add_parser("status", help="查看模拟盘当前状态")
     p_status.add_argument(
@@ -216,9 +223,20 @@ def _default_db() -> Path:
 def _cmd_paper_run(args: argparse.Namespace) -> int:
     db = args.db or _default_db()
     config = _load_config(args.config)
+    notifier = None
+    if args.notify:
+        try:
+            notifier = make_notifier(args.notify)
+        except ValueError as e:
+            print(f"错误：{e}", file=sys.stderr)
+            return 1
     conn = connect(str(db))
-    runner = PaperRunner(config, AkshareRealtimeProvider(), conn, interval=args.interval)
+    runner = PaperRunner(
+        config, AkshareRealtimeProvider(), conn, interval=args.interval, notifier=notifier
+    )
     print(f"模拟盘启动 · {args.symbol}（库 {db}，轮询 {args.interval}s）")
+    if notifier is not None:
+        print(f"  推送：{args.notify}（半自动，只通知不下单）")
     print("—— Ctrl+C 停止，重启 replay 续跑")
     try:
         runner.run()

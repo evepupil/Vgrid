@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
 import time as _time
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -14,6 +15,7 @@ from decimal import Decimal
 
 from vgrid.core.config import GridConfig
 from vgrid.core.models import Fill
+from vgrid.notify.base import Notifier
 from vgrid.paper.realtime import RealtimeProvider
 from vgrid.paper.session import in_session, next_session_open
 from vgrid.store.repository import (
@@ -51,11 +53,13 @@ class PaperRunner:
         conn: sqlite3.Connection,
         *,
         interval: float = 15.0,
+        notifier: Notifier | None = None,
     ) -> None:
         self._config = config
         self._provider = provider
         self._conn = conn
         self._interval = interval
+        self._notifier = notifier
         self._engine = GridEngine(config)
         self._started = False
         existing = load_config(conn)
@@ -82,6 +86,8 @@ class PaperRunner:
         """处理一个 tick：落库 + 喂 engine。
 
         首个 tick 走 start（零成交），之后 step。返回本次成交（已落库）。
+        有 Notifier 则把成交信号推出去（切10a：只通知不真下单）；推送失败打日志、
+        不中断模拟盘——记账比通知重要，不能因网络抖动停盘。
         """
         save_tick(self._conn, ts, price)
         if not self._started:
@@ -91,6 +97,11 @@ class PaperRunner:
             fills = [replace(f, ts=ts) for f in self._engine.step(price)]
         for f in fills:
             save_fill(self._conn, f)
+        if fills and self._notifier is not None:
+            try:
+                self._notifier.send(fills, symbol=self._config.symbol)
+            except OSError as e:
+                print(f"推送失败（不中断模拟盘）：{e}", file=sys.stderr)
         return fills
 
     def step_once(self) -> list[Fill]:
