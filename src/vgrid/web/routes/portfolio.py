@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from vgrid.web.portfolio import InstanceView, PortfolioManager, WatchItem
+from vgrid.web.watchlist_enrich import WatchlistEnricher, enriched_to_dict
 
 router = APIRouter(tags=["portfolio"])
 
@@ -30,6 +31,18 @@ def runners(request: Request) -> list[dict[str, object]]:
 @router.get("/api/watchlist")
 def watchlist(request: Request) -> list[dict[str, object]]:
     return [_watch_dict(w) for w in _mgr(request).list_watchlist()]
+
+
+@router.get("/api/watchlist/enriched")
+def watchlist_enriched(request: Request) -> list[dict[str, object]]:
+    """关注列表 + 实时行情 + 振幅 + 网格适配评分 + 近 N 日走势（FR-10.2~10.4）。"""
+    items = _mgr(request).list_watchlist()
+    enricher = WatchlistEnricher(
+        request.app.state.quote_provider,
+        bar_provider=getattr(request.app.state, "bar_provider", None),
+        cache_dir=getattr(request.app.state, "cache_dir", None),
+    )
+    return [enriched_to_dict(e) for e in enricher.enrich(items)]
 
 
 @router.post("/api/watchlist")
