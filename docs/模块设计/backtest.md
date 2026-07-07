@@ -53,3 +53,6 @@
   metrics（收益率 / 年化 / 回撤 / 夏普 / 胜率 / 盈亏比 / 手续费 / 买入持有，全 Decimal）、
   result 数据类。core/models 的 `Fill` 加 `realized_pnl`、`engine._execute_sell` 填值。
   单测覆盖撮合顺序 / ts / 守恒 / 各指标手算案例。
+- **2026-07-07（review 修复 #10/#11）**：`_buy_hold` 分母从「实际投入」改用 `initial_cash`，
+  与网格 `total_return` 同口径，报告两列对照才公平；年化(自然日/365) 与夏普(交易日/252)
+  口径不同，在模块 docstring 注明（报告里另加脚注）。补买入持有分母的回归测试。

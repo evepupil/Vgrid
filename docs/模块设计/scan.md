@@ -50,3 +50,7 @@
 - **2026-07-06（M3 首次实现）**：`ScanSpec`（笛卡尔积 + 上限保护）、`run_scan` / `rank` /
   `metric_value`（含 calmar）、扫描报告 Markdown。单测覆盖笛卡尔积展开 / 继承 / 往返 / 超限、
   排序 / calmar / 未知指标。
+- **2026-07-07（review 修复 #14/#15/#16/#18/#19）**：calmar 只在「无回撤且年化>0」给极大值，
+  躺平配置（0 成交、权益直线）按年化排后面，不再刷第一；`ScanSpec` 校验 fixed/vary 键都是
+  合法 `GridConfig` 字段（拼错抛错）、fixed/vary 同名冲突抛错、vary 候选按序去重；`run_scan`
+  加可选进度回调。补 `run_scan` 主路径 + 字段校验 + 去重 + calmar 躺平的测试。

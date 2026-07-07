@@ -8,6 +8,19 @@
 
 ---
 
+## 解决状态（2026-07-07 开发会话）
+
+| # | 状态 | commit |
+|---|---|---|
+| 1 | ✅ 已解决：`_fill_buys_descending` 跌买触及资金上限改 `break`，与注释、`desired_orders` 对齐 | `eb52589` |
+| 2 | ✅ 已解决：`desired_orders` 去掉 `ensure_covers_down_to` 副作用，改纯只读 | `eb52589` |
+| 3 | ✅ 已解决：删掉只被测试调用的 `extend_levels_down` 纯函数（生产走 `Ladder._extend_one`） | `eb52589` |
+| 4 | ✅ 已解决：roadmap + `requires-python` 对齐到 3.13 | `16300d8` |
+| 5 | ✅ 已解决：补等比引擎链路、中间 `upper_rebuild_ratio`、两个守卫、`down_amount_factor<1` 测试 | `eb52589` `16300d8` |
+| 6 | ✅ 已解决：加 `.gitattributes`（`* text=auto eol=lf`）消除 CRLF 幽灵 modified | `16300d8` |
+
+---
+
 ## 发现的问题
 
 ### 1. 跌买触及资金上限时用 `continue`，与注释、与 `desired_orders` 都不一致（中）

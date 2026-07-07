@@ -108,3 +108,7 @@
   拉全量 + 区间过滤去重）、``Frame.M5``、``metrics._periods_per_year`` 加 5 分钟系数（252×48）。
   单测覆盖字段映射/翻页停止/区间过滤/跨页去重（mock Quotes 不打网）。mootdx 返回不复权，
   复权后续用 Affair 接口做。
+- **2026-07-07（review 修复 #7/#8/#12/#13）**：`bars_from_columns` 单次数据内按 ts 去重
+  （后到覆盖前到，分钟线跨段拼接遇重复时间戳不再崩）；`ParquetCache.save` 改原子写
+  （`.tmp` + `os.replace`）；补分钟线 akshare mock 测试；`_covers` 只看首末查不出区间空洞的
+  限制写进模块 docstring + 函数注释（完整校验需交易日历，暂作取舍不接，见 review 取舍记录）。
