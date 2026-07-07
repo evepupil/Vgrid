@@ -188,6 +188,25 @@ export async function listWatchlist(): Promise<WatchItem[]> {
   return get<WatchItem[]>('/api/watchlist')
 }
 
+// 关注列表增强（FR-10.2~10.4）：实时行情 + 振幅 + 网格适配评分 + 近 N 日走势
+export interface EnrichedWatch {
+  symbol: string
+  name: string | null
+  added_at: string
+  price: string | null
+  change_pct: string | null // 涨跌%
+  amplitude_pct: string | null // 平均日振幅%
+  fitness_score: number | null // 网格适配评分 0–100
+  trendiness: string | null // 效率比 [0,1]，越大越单边
+  crossings: number | null // 收盘穿越均线次数
+  trend: string[] // 近 N 日收盘（sparkline），空则不画
+  error: string | null // 该行历史行情失败时非空
+}
+
+export async function listWatchlistEnriched(): Promise<EnrichedWatch[]> {
+  return get<EnrichedWatch[]>('/api/watchlist/enriched')
+}
+
 export async function addWatch(
   symbol: string,
   name: string | null = null,

@@ -10,6 +10,7 @@ import './styles/shell.css'
 import './styles/ladder.css'
 import './styles/chart.css'
 import './styles/portfolio.css'
+import './styles/watchlist.css'
 import App from './App.tsx'
 
 const queryClient = new QueryClient()
