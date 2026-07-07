@@ -53,6 +53,21 @@ def test_columns_minute_ts_parsed() -> None:
     assert bars[0].ts == datetime(2024, 1, 2, 9, 31)
 
 
+def test_columns_dedup_duplicate_ts_last_wins() -> None:
+    """回归 #13：单次数据里重复时间戳按「后到覆盖前到」去重，不让下游严格递增校验崩。"""
+    columns = {
+        "ts": ["2024-01-02", "2024-01-02"],
+        "open": ["1.00", "2.00"],
+        "high": ["1.05", "2.05"],
+        "low": ["0.99", "1.99"],
+        "close": ["1.03", "2.03"],
+        "volume": ["100", "200"],
+    }
+    bars = bars_from_columns(columns, Frame.DAILY)
+    assert len(bars) == 1
+    assert bars[0].close == Decimal("2.03")  # 后到的覆盖前到
+
+
 def test_columns_reject_missing_field() -> None:
     columns = {
         "ts": ["2024-01-02"],

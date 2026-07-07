@@ -44,6 +44,30 @@ def test_cache_missing_returns_none(tmp_path: Path) -> None:
     assert cache.load("159920", Frame.DAILY) is None
 
 
+def test_cache_save_leaves_no_tmp_file(tmp_path: Path) -> None:
+    """回归 #12：原子写（tmp + os.replace）落盘后不残留临时文件。"""
+    cache = ParquetCache(tmp_path)
+    series = BarSeries(symbol="159920", frame=Frame.DAILY, bars=(_bar("2024-01-02"),))
+    cache.save(series)
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_cache_overwrite_replaces_existing(tmp_path: Path) -> None:
+    """原子替换能正确覆盖已存在的目标文件。"""
+    cache = ParquetCache(tmp_path)
+    cache.save(BarSeries(symbol="159920", frame=Frame.DAILY, bars=(_bar("2024-01-02"),)))
+    cache.save(
+        BarSeries(
+            symbol="159920",
+            frame=Frame.DAILY,
+            bars=(_bar("2024-01-02"), _bar("2024-01-03")),
+        )
+    )
+    loaded = cache.load("159920", Frame.DAILY)
+    assert loaded is not None
+    assert len(loaded.bars) == 2
+
+
 def test_cache_decimal_precision_preserved(tmp_path: Path) -> None:
     """价格按 string 存，三位小数无损往返。"""
     cache = ParquetCache(tmp_path)

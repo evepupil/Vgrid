@@ -29,11 +29,14 @@ class BarProvider(Protocol):
 
 
 def bars_from_columns(columns: Mapping[str, Sequence[object]], frame: Frame) -> list[Bar]:
-    """把列式数据（每个 key 对应一列）转成按时间升序的 Bar 列表。
+    """把列式数据（每个 key 对应一列）转成按时间升序、时间戳唯一的 Bar 列表。
 
     期望 keys：``ts / open / high / low / close / volume``。
     ``ts`` 接受 str / datetime / date / pandas.Timestamp（先 ``str()`` 归一再
     ``fromisoformat`` 解析）；价格列接受任意可转 ``Decimal`` 的值。
+
+    单次数据里若出现重复时间戳（分钟线跨段拼接时 akshare 偶发），按「后到覆盖前到」
+    去重——和 ``loader._merge`` 同口径。不去重会让下游 ``BarSeries`` 的严格递增校验直接崩。
     """
     keys = ("ts", "open", "high", "low", "close", "volume")
     missing = [k for k in keys if k not in columns]
@@ -43,8 +46,9 @@ def bars_from_columns(columns: Mapping[str, Sequence[object]], frame: Frame) -> 
     if any(len(columns[k]) != n for k in keys):
         raise ValueError("各列长度不一致")
 
-    bars = [
-        Bar(
+    by_ts: dict[datetime, Bar] = {}
+    for i in range(n):
+        bar = Bar(
             ts=_parse_ts(columns["ts"][i]),
             open=Decimal(str(columns["open"][i])),
             high=Decimal(str(columns["high"][i])),
@@ -52,10 +56,8 @@ def bars_from_columns(columns: Mapping[str, Sequence[object]], frame: Frame) -> 
             close=Decimal(str(columns["close"][i])),
             volume=Decimal(str(columns["volume"][i])),
         )
-        for i in range(n)
-    ]
-    bars.sort(key=lambda b: b.ts)
-    return bars
+        by_ts[bar.ts] = bar
+    return sorted(by_ts.values(), key=lambda b: b.ts)
 
 
 def _parse_ts(value: object) -> datetime:

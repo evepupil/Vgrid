@@ -1,6 +1,6 @@
 """akshare provider：列适配 + fetch（mock akshare，不打网）。"""
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pandas as pd
@@ -114,3 +114,39 @@ def test_fetch_daily_sina_sh_prefix_for_sh_etf(monkeypatch: pytest.MonkeyPatch) 
     prov = AkshareProvider()
     prov.fetch("510300", date(2024, 1, 2), date(2024, 1, 3), Frame.DAILY)
     assert captured["symbol"] == "sh510300"  # 沪市加 sh 前缀
+
+
+def _sample_df_min_em() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "时间": ["2024-01-02 09:31:00", "2024-01-02 09:32:00"],
+            "开盘": [1.00, 1.01],
+            "最高": [1.05, 1.06],
+            "最低": [0.99, 1.00],
+            "收盘": [1.03, 1.04],
+            "成交量": [100, 200],
+        }
+    )
+
+
+def test_fetch_minute_em_through_mock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """回归 #8：分钟线路径（东财 min_em，用「时间」列）此前零测试，这里锁住核心行为。"""
+    df = _sample_df_min_em()
+    captured: dict[str, object] = {}
+
+    def _fake(**kwargs: object) -> pd.DataFrame:
+        captured.update(kwargs)
+        return df
+
+    monkeypatch.setattr("vgrid.data.akshare_provider.ak.fund_etf_hist_min_em", _fake)
+    prov = AkshareProvider()  # 分钟线不受 source 影响
+    series = prov.fetch("159920", date(2024, 1, 2), date(2024, 1, 2), Frame.MINUTE)
+
+    assert captured["symbol"] == "159920"
+    assert captured["period"] == "1"
+    assert captured["start_date"] == "2024-01-02 09:30:00"
+    assert captured["end_date"] == "2024-01-02 15:00:00"
+    assert series.frame is Frame.MINUTE
+    assert len(series) == 2
+    assert series[0].ts == datetime(2024, 1, 2, 9, 31)  # 分钟时间戳解析到分
+    assert series[1].close == Decimal("1.04")

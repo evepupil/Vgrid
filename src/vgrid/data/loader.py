@@ -6,6 +6,12 @@
 区间框定（covers / slice）按「日」比（用 ``bar.ts.date()`` 与 start/end 的 date 比），
 日线 / 分钟线统一适用——分钟线按交易日框区间。去重按完整 ``ts``（datetime），保证
 同一天的多个分钟线不会被互相覆盖。
+
+**已知限制（见 review #7）**：``_covers`` 只看缓存里首末两根 K 线的日期能否包住请求
+区间，**查不出区间内部的缺日**。一旦某次 fetch 因上游异常 / 代理中断返回了不连续的
+序列，这个洞会永久留在缓存里，之后「首末能包住」的请求会被误判命中、返回残缺数据，
+回测在不知情下跑在不完整行情上。彻底修需要一份交易日历（按「区间内应有多少交易日 vs
+实际根数」校验），暂未接入；`refresh=True` 可强制重新下载绕过缓存。
 """
 
 from __future__ import annotations
@@ -60,7 +66,11 @@ def _series(symbol: str, frame: Frame, bars: tuple[Bar, ...]) -> BarSeries:
 
 
 def _covers(bars: tuple[Bar, ...], start: date, end: date) -> bool:
-    """bars 是否完全覆盖 [start, end]（按日比）。"""
+    """bars 是否覆盖 [start, end]（只按首末日期判断）。
+
+    注意：只保证首末日期包住区间，**不保证中间无缺失**。详见模块 docstring 的
+    「已知限制（review #7）」。
+    """
     if not bars:
         return False
     return bars[0].ts.date() <= start and bars[-1].ts.date() >= end

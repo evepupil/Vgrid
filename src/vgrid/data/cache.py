@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pyarrow as pa
@@ -52,9 +53,16 @@ class ParquetCache:
         return BarSeries(symbol=symbol, frame=frame, bars=tuple(bars))
 
     def save(self, series: BarSeries) -> None:
-        """覆盖写整个文件（series 应已是合并去重后的全量）。"""
+        """覆盖写整个文件（series 应已是合并去重后的全量）。
+
+        先写临时文件再 ``os.replace`` 原子替换：写一半被杀 / 断电 / 磁盘满时，原文件
+        不受影响，不会留下半残的 parquet 让下次 ``load`` 崩。
+        """
         table = _bars_to_table(series.bars)
-        pq.write_table(table, self._path(series.symbol, series.frame))  # type: ignore[no-untyped-call]
+        path = self._path(series.symbol, series.frame)
+        tmp = path.with_name(path.name + ".tmp")
+        pq.write_table(table, tmp)  # type: ignore[no-untyped-call]
+        os.replace(tmp, path)
 
 
 def _bars_to_table(bars: tuple[Bar, ...]) -> pa.Table:
