@@ -59,9 +59,16 @@ def _instance_dict(i: InstanceView) -> dict[str, object]:
         "last_ts": i.last_ts.isoformat() if i.last_ts is not None else None,
         "equity": str(i.equity),
         "realized_pnl": str(i.realized_pnl),
+        "unrealized_pnl": str(i.unrealized_pnl),
+        "committed": str(i.committed),
+        "capital_cap": str(i.capital_cap),
+        "position_shares": i.position_shares,
+        "sharpe": str(i.sharpe),
+        "max_drawdown": str(i.max_drawdown),
         "total_fee": str(i.total_fee),
         "open_lots": i.open_lots,
         "n_fills": i.n_fills,
+        "equity_spark": [str(v) for v in i.equity_spark],
     }
 
 

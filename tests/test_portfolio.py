@@ -60,6 +60,24 @@ def test_summary(tmp_path: Path) -> None:
     assert Decimal(str(s["total_equity"])) > 0
 
 
+def test_summary_has_portfolio_aggregates(tmp_path: Path) -> None:
+    _seed(tmp_path, "a", age=timedelta(minutes=1))
+    s = PortfolioManager(tmp_path).summary()
+    for key in ("total_unrealized_pnl", "total_committed", "total_cap"):
+        assert key in s
+    # 单实例，总额度 = 该实例资金上限 5 万
+    assert Decimal(str(s["total_cap"])) == Decimal("50000")
+
+
+def test_instance_view_enriched_fields(tmp_path: Path) -> None:
+    _seed(tmp_path, "a", age=timedelta(minutes=1))
+    inst = PortfolioManager(tmp_path).list_instances()[0]
+    assert inst.capital_cap == Decimal("50000")
+    assert isinstance(inst.unrealized_pnl, Decimal)
+    assert isinstance(inst.position_shares, int)
+    assert len(inst.equity_spark) >= 1  # 迷你净值有点
+
+
 def test_watchlist_crud(tmp_path: Path) -> None:
     mgr = PortfolioManager(tmp_path)
     assert mgr.list_watchlist() == []

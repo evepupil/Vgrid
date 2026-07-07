@@ -16,7 +16,10 @@ from decimal import Decimal
 from pathlib import Path
 
 from vgrid.store.db import connect
+from vgrid.web.curve import downsample
 from vgrid.web.state import StateView, load_state
+
+_SPARK_POINTS = 24
 
 _RUNNING_THRESHOLD = timedelta(minutes=5)
 _WATCH_SCHEMA = """
@@ -40,9 +43,16 @@ class InstanceView:
     last_ts: datetime | None
     equity: Decimal
     realized_pnl: Decimal
+    unrealized_pnl: Decimal
+    committed: Decimal
+    capital_cap: Decimal
+    position_shares: int
+    sharpe: Decimal
+    max_drawdown: Decimal
     total_fee: Decimal
     open_lots: int
     n_fills: int
+    equity_spark: list[Decimal]  # 迷你净值（降采样到 ~24 点）
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,13 +89,16 @@ class PortfolioManager:
         return views
 
     def summary(self) -> dict[str, object]:
-        """总资产 + 实例数 + 在跑数 + 累计已实现盈亏 / 手续费。"""
+        """组合汇总：总资产 / 已实现合计 / 浮动合计 / 占用-总额度 + 实例数。"""
         insts = self.list_instances()
         return {
             "n_instances": len(insts),
             "n_running": sum(1 for i in insts if i.status == "running"),
             "total_equity": str(sum((i.equity for i in insts), Decimal(0))),
             "total_realized_pnl": str(sum((i.realized_pnl for i in insts), Decimal(0))),
+            "total_unrealized_pnl": str(sum((i.unrealized_pnl for i in insts), Decimal(0))),
+            "total_committed": str(sum((i.committed for i in insts), Decimal(0))),
+            "total_cap": str(sum((i.capital_cap for i in insts), Decimal(0))),
             "total_fee": str(sum((i.total_fee for i in insts), Decimal(0))),
         }
 
@@ -141,6 +154,7 @@ def _to_instance(name: str, db_path: str, view: StateView) -> InstanceView:
     last_price_raw = snapshot.get("last_price")
     last_ts = last_ts_raw if isinstance(last_ts_raw, datetime) else None
     equity = view.equity_curve[-1].equity if view.equity_curve else Decimal(0)
+    spark, _ = downsample(view.equity_curve, _SPARK_POINTS)
     return InstanceView(
         name=name,
         db_path=db_path,
@@ -150,9 +164,16 @@ def _to_instance(name: str, db_path: str, view: StateView) -> InstanceView:
         last_ts=last_ts,
         equity=equity,
         realized_pnl=_dec(snapshot.get("realized_pnl")),
+        unrealized_pnl=_dec(snapshot.get("unrealized_pnl")),
+        committed=_dec(snapshot.get("committed")),
+        capital_cap=_dec_str(view.config.get("capital_cap")),
+        position_shares=_int(snapshot.get("position_shares")),
+        sharpe=_dec(view.metrics.get("sharpe")),
+        max_drawdown=_dec(view.metrics.get("max_drawdown")),
         total_fee=_dec(snapshot.get("total_fee")),
         open_lots=_int(snapshot.get("open_lots")),
         n_fills=_int(snapshot.get("n_fills")),
+        equity_spark=[p.equity for p in spark],
     )
 
 
@@ -164,6 +185,18 @@ def _status(last_ts: datetime | None) -> str:
 
 def _dec(v: object) -> Decimal:
     return v if isinstance(v, Decimal) else Decimal(0)
+
+
+def _dec_str(v: object) -> Decimal:
+    """config summary 里的 Decimal 字段是 str，转回 Decimal。"""
+    if isinstance(v, Decimal):
+        return v
+    if isinstance(v, str):
+        try:
+            return Decimal(v)
+        except (ValueError, ArithmeticError):
+            return Decimal(0)
+    return Decimal(0)
 
 
 def _int(v: object) -> int:
