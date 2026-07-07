@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from vgrid.core.enums import Frame
-from vgrid.data.mootdx_provider import MootdxProvider
+from vgrid.data.mootdx_provider import MootdxProvider, symbol_exists
 
 
 def _df(rows: list[tuple[str, float, float, float, float, int]]) -> pd.DataFrame:
@@ -127,3 +127,27 @@ def test_fetch_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch(monkeypatch, [])
     series = MootdxProvider().fetch("159920", date(2024, 1, 2), date(2024, 1, 3), Frame.MINUTE)
     assert len(series) == 0
+
+
+def test_symbol_exists_true(monkeypatch: pytest.MonkeyPatch) -> None:
+    """拉到 K 线 = 代码有效。"""
+    fake = SimpleNamespace(fetch=lambda *a, **kw: SimpleNamespace(bars=[1, 2, 3]))
+    monkeypatch.setattr("vgrid.data.mootdx_provider._validator", fake)
+    assert symbol_exists("159920") is True
+
+
+def test_symbol_exists_false_no_bars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """无 K 线 = 代码无效。"""
+    fake = SimpleNamespace(fetch=lambda *a, **kw: SimpleNamespace(bars=[]))
+    monkeypatch.setattr("vgrid.data.mootdx_provider._validator", fake)
+    assert symbol_exists("999999") is False
+
+
+def test_symbol_exists_false_on_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    """连接异常也判 False（验不住就拦下，让用户核对代码）。"""
+
+    def boom(*a: object, **kw: object) -> object:
+        raise OSError("connect failed")
+
+    monkeypatch.setattr("vgrid.data.mootdx_provider._validator", SimpleNamespace(fetch=boom))
+    assert symbol_exists("159920") is False

@@ -64,8 +64,8 @@ def test_runners(tmp_path: Path) -> None:
 
 def test_watchlist_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "vgrid.web.routes.portfolio.get_etf_name",
-        lambda s: "恒生ETF" if s == "159920" else None,
+        "vgrid.web.routes.portfolio.symbol_exists",
+        lambda s: s == "159920",
     )
     client = _client(tmp_path)
     assert client.get("/api/watchlist").json() == []
@@ -110,21 +110,21 @@ def test_add_watch_unknown_symbol_404(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """代码不在 ETF 列表 → 404，不写库。"""
-    monkeypatch.setattr("vgrid.web.routes.portfolio.get_etf_name", lambda s: None)
+    monkeypatch.setattr("vgrid.web.routes.portfolio.symbol_exists", lambda s: False)
     client = _client(tmp_path)
     r = client.post("/api/watchlist", json={"symbol": "999999"})
     assert r.status_code == 404
     assert client.get("/api/watchlist").json() == []
 
 
-def test_add_watch_fills_name_from_etf(
+def test_add_watch_without_name_stores_null(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """关注不传 name 时，用 get_etf_name 拉到的名称填进表（离线也有名字）。"""
+    """关注不传 name → 存 null（名称由 enriched 列表展示时拉，不在关注时拉 em）。"""
     monkeypatch.setattr(
-        "vgrid.web.routes.portfolio.get_etf_name",
-        lambda s: "恒生ETF" if s == "159920" else None,
+        "vgrid.web.routes.portfolio.symbol_exists",
+        lambda s: s == "159920",
     )
     r = _client(tmp_path).post("/api/watchlist", json={"symbol": "159920"})
     assert r.status_code == 200
-    assert r.json()["name"] == "恒生ETF"
+    assert r.json()["name"] is None
