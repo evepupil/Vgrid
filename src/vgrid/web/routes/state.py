@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
+from vgrid.analysis.stress import StressReport
 from vgrid.backtest.result import EquityPoint
 from vgrid.core.models import Fill
 from vgrid.store.db import connect
@@ -46,6 +47,35 @@ def _state_to_dict(view: StateView) -> dict[str, object]:
         "fill_marks": [_mark_to_dict(m) for m in view.fill_marks],
         "n_ticks": view.n_ticks,
         "ladder": ladder_to_dict(view.ladder) if view.ladder is not None else None,
+        "risk": _risk_to_dict(view.risk) if view.risk is not None else None,
+    }
+
+
+def _risk_to_dict(r: StressReport) -> dict[str, object]:
+    return {
+        "occupancy": {
+            "committed": str(r.occupancy.committed),
+            "capital_cap": str(r.occupancy.capital_cap),
+            "ratio_pct": str(r.occupancy.ratio_pct),
+            "buffer_pct": str(r.occupancy.buffer_pct),
+        },
+        "scenarios": [
+            {
+                "drop_pct": str(s.drop_pct),
+                "scenario_price": str(s.scenario_price),
+                "position_loss": str(s.position_loss),
+                "projected_unrealized": str(s.projected_unrealized),
+            }
+            for s in r.scenarios
+        ],
+        "amplification": {
+            "lower_price": str(r.amplification.lower_price),
+            "down_spacing_factor": str(r.amplification.down_spacing_factor),
+            "down_amount_factor": str(r.amplification.down_amount_factor),
+            "enabled": r.amplification.enabled,
+            "note": r.amplification.note,
+        },
+        "max_occupancy": str(r.max_occupancy),
     }
 
 

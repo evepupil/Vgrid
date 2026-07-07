@@ -18,6 +18,7 @@ from vgrid.web.quotes import AkshareSpotProvider, QuoteProvider
 from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import etf as etf_router
 from vgrid.web.routes import ladder as ladder_router
+from vgrid.web.routes import market as market_router
 from vgrid.web.routes import portfolio as portfolio_router
 from vgrid.web.routes import quotes as quotes_router
 from vgrid.web.routes import scan as scan_router
@@ -67,6 +68,7 @@ def create_app(
     app.include_router(ladder_router.router)
     app.include_router(quotes_router.router)
     app.include_router(scan_router.router)
+    app.include_router(market_router.router)
 
     if frontend_dist is not None and frontend_dist.exists():
         dist_resolved = frontend_dist.resolve()

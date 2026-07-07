@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from vgrid.analysis.stress import StressReport, black_swan_report
 from vgrid.backtest.metrics import max_drawdown_of, sharpe_of
 from vgrid.backtest.result import EquityPoint
 from vgrid.core.config import GridConfig
@@ -54,6 +55,7 @@ class StateView:
     fill_marks: list[FillMark]
     n_ticks: int
     ladder: LadderView | None
+    risk: StressReport | None  # 风控 / 黑天鹅推演（FR-6），无现价则 None
 
 
 def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateView | None:
@@ -136,6 +138,21 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
     # replay 后的 engine 停在当前实时状态，直接抽出带真实持仓的阶梯
     ladder = build_ladder_view(engine, last_price) if last_price is not None else None
 
+    # 风控 / 黑天鹅推演（占用/上限 + 逐档下跌 + 放大区），需现价才能推演
+    if last_price is not None:
+        risk: StressReport | None = black_swan_report(
+            current_price=last_price,
+            position_value=position_value,
+            unrealized=unrealized_pnl,
+            committed=engine.committed,
+            capital_cap=config.capital_cap,
+            lower_price=config.lower_price,
+            down_spacing_factor=config.down_spacing_factor,
+            down_amount_factor=config.down_amount_factor,
+        )
+    else:
+        risk = None
+
     return StateView(
         symbol=config.symbol,
         config=_config_summary(config),
@@ -153,6 +170,7 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         fill_marks=fill_marks,
         n_ticks=len(ticks),
         ladder=ladder,
+        risk=risk,
     )
 
 
