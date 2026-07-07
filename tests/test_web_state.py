@@ -82,3 +82,33 @@ def test_ladder_present_from_replayed_engine() -> None:
     assert view.ladder.current_price == Decimal("1.10")
     assert view.ladder.window_lower == Decimal("1.00")
     assert len(view.ladder.rungs) >= 5  # 至少基准 5 条线
+
+
+def test_snapshot_has_realized_and_unrealized_separated() -> None:
+    """已实现 与 浮动 分开返回（诚实性底线）。"""
+    conn = connect()
+    _seed(conn)  # ZERO：step(1.05) 买、step(1.10) 卖 → 末态平仓
+    view = load_state(conn)
+    assert view is not None
+    snap = view.snapshot
+    for key in ("realized_pnl", "unrealized_pnl", "position_shares", "avg_cost", "position_value"):
+        assert key in snap
+    # 末态已平仓：无持仓 → 浮动为 0、份额为 0
+    assert snap["position_shares"] == 0
+    assert snap["unrealized_pnl"] == Decimal(0)
+
+
+def test_unrealized_nonzero_when_holding() -> None:
+    """持仓未平且现价高于成本时，浮动为正。"""
+    conn = connect()
+    save_config(conn, _cfg())
+    save_tick(conn, datetime(2024, 1, 2, 9, 30), Decimal("1.10"))
+    save_tick(conn, datetime(2024, 1, 2, 9, 31), Decimal("1.05"))  # 买入一格
+    save_tick(conn, datetime(2024, 1, 2, 9, 32), Decimal("1.08"))  # 未涨到卖点，持仓浮盈
+    view = load_state(conn)
+    assert view is not None
+    snap = view.snapshot
+    assert isinstance(snap["position_shares"], int)
+    assert snap["position_shares"] > 0
+    assert isinstance(snap["unrealized_pnl"], Decimal)
+    assert snap["unrealized_pnl"] > 0

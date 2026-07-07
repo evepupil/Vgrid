@@ -13,10 +13,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 
+from vgrid.web.quotes import AkshareSpotProvider, QuoteProvider
 from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import etf as etf_router
 from vgrid.web.routes import ladder as ladder_router
 from vgrid.web.routes import portfolio as portfolio_router
+from vgrid.web.routes import quotes as quotes_router
 from vgrid.web.routes import state as state_router
 from vgrid.web.routes import strategies as strategies_router
 
@@ -31,6 +33,7 @@ def create_app(
     strategies_dir: Path | None = None,
     data_dir: Path | None = None,
     frontend_dist: Path | None = None,
+    quote_provider: QuoteProvider | None = None,
 ) -> FastAPI:
     """创建控制台 FastAPI 应用。
 
@@ -40,17 +43,20 @@ def create_app(
         data_dir: 用户数据目录（存 portfolio.sqlite + paper/ 实例 DB，默认 ``~/.vgrid``）。
         frontend_dist: 前端构建产物目录。传 ``frontend/dist`` 则后端 serve SPA
             （文件存在返文件、否则回退 index.html）；不传则回退旧 HTML 面板。
+        quote_provider: 实时报价源，默认 ``AkshareSpotProvider``。测试 / 离线可注入 stub。
     """
     app = FastAPI(title="vgrid console")
     app.state.default_db = default_db
     app.state.strategies_dir = strategies_dir or _DEFAULT_STRATEGIES_DIR
     app.state.data_dir = data_dir or _DEFAULT_DATA_DIR
+    app.state.quote_provider = quote_provider or AkshareSpotProvider()
     app.include_router(state_router.router)
     app.include_router(strategies_router.router)
     app.include_router(backtest_router.router)
     app.include_router(portfolio_router.router)
     app.include_router(etf_router.router)
     app.include_router(ladder_router.router)
+    app.include_router(quotes_router.router)
 
     if frontend_dist is not None and frontend_dist.exists():
         dist_resolved = frontend_dist.resolve()

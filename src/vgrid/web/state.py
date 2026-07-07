@@ -100,18 +100,33 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         for tick_idx, f in marks_raw
     ]
 
+    # 浮动盈亏：持仓按现价 mark-to-market − 成本（含买入费）。与已实现分开返回，
+    # 是全系统诚实性底线——不许把两者揉成一个「总收益」。
+    last_price = ticks[-1][1] if ticks else None
+    pos = engine.position
+    if last_price is not None and pos.shares > 0:
+        position_value = Decimal(pos.shares) * last_price
+        unrealized_pnl = position_value - pos.cost
+    else:
+        position_value = Decimal(0)
+        unrealized_pnl = Decimal(0)
+
     snapshot: dict[str, object] = {
-        "last_price": ticks[-1][1] if ticks else None,
+        "last_price": last_price,
         "last_ts": ticks[-1][0] if ticks else None,
         "open_lots": engine.open_lots,
         "committed": engine.committed,
         "realized_pnl": engine.realized_pnl,
+        "unrealized_pnl": unrealized_pnl,
+        "position_shares": pos.shares,
+        "position_value": position_value,
+        "avg_cost": pos.avg_cost,
         "total_fee": engine.total_fee,
         "cash_flow": engine.cash_flow,
         "n_fills": len(fills),
     }
     # replay 后的 engine 停在当前实时状态，直接抽出带真实持仓的阶梯
-    ladder = build_ladder_view(engine, ticks[-1][1]) if ticks else None
+    ladder = build_ladder_view(engine, last_price) if last_price is not None else None
 
     return StateView(
         symbol=config.symbol,
