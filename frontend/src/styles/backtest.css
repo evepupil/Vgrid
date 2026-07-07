@@ -1,0 +1,184 @@
+/* 回测屏（FR-7/8）：配置表单 + 结果 + 参数扫描。表基样式在 shell.css，这里补表单/扫描。 */
+
+.form {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.fg {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fg label {
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.fg input,
+.fg select {
+  font-family: var(--font-m);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--hair);
+  padding: 8px 10px;
+  width: 100%;
+  outline: none;
+  border-radius: 2px;
+}
+.fg input:focus,
+.fg select:focus {
+  border-color: var(--acc-glow);
+}
+/* 原生日期选择器图标染亮，别是纯黑看不见 */
+.fg input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+.frow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.seg {
+  display: flex;
+  border: 1px solid var(--hair);
+  font-family: var(--font-m);
+  font-size: 11px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.seg span {
+  flex: 1;
+  text-align: center;
+  padding: 7px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: 0.12s;
+}
+.seg span.on {
+  background: var(--acc-bg);
+  color: var(--acc);
+}
+.run {
+  margin-top: 4px;
+  background: var(--acc);
+  color: var(--acc-ink);
+  border: none;
+  font-family: var(--font-m);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 11px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.run:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.run:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 结果 */
+.bt-result {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bt-kpis {
+  border: none;
+  grid-template-columns: repeat(4, 1fr);
+}
+.bt-warn {
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.5;
+  align-items: flex-start;
+}
+.bt-err {
+  padding: 20px 16px;
+  font-family: var(--font-m);
+  font-size: 12px;
+  color: var(--down);
+}
+.bt-ladder {
+  margin-top: 4px;
+}
+
+/* 参数扫描 */
+.scan {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scan-ctl {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.scan-ctl label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.scan-ctl input,
+.scan-ctl select {
+  font-family: var(--font-m);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--hair);
+  padding: 8px 10px;
+  outline: none;
+  border-radius: 2px;
+  min-width: 150px;
+}
+.scan-ctl input:focus,
+.scan-ctl select:focus {
+  border-color: var(--acc-glow);
+}
+.scan-top {
+  min-width: 70px !important;
+  width: 70px;
+}
+.scan-run {
+  margin-top: 0;
+  padding: 8px 20px;
+  font-size: 12px;
+}
+.scan-scroll {
+  overflow-x: auto;
+}
+.scan-sum,
+.scan-hint {
+  font-family: var(--font-m);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.scan-best td {
+  background: var(--acc-bg);
+}
+.scan-best td.b {
+  color: var(--acc);
+}
+.scan .act {
+  color: var(--acc);
+  cursor: pointer;
+}
+.scan .act:hover {
+  text-decoration: underline;
+}

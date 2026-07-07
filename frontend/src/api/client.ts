@@ -70,8 +70,12 @@ export interface Fill {
 export interface BacktestResult {
   metrics: BacktestMetrics
   equity_curve: EquityPoint[]
+  drawdown_curve: { ts: string; drawdown: string }[] // FR-7.3 逐点回撤（<=0）
+  buy_hold_curve: { ts: string; equity: string }[] // FR-7.3 买入持有对照
   fills: Fill[]
   n_bars: number
+  end_ladder: LadderView | null // FR-7.4 期末阶梯快照
+  overfit_note: string // FR-7.5 样本内最优提示
 }
 
 export interface BacktestBody {
@@ -84,6 +88,46 @@ export interface BacktestBody {
 
 export async function runBacktest(body: BacktestBody): Promise<BacktestResult> {
   return post<BacktestResult>('/api/backtest', body)
+}
+
+// 参数扫描（FR-8）
+export type ScanMetric = 'sharpe' | 'total_return' | 'annualized_return' | 'calmar'
+
+export interface ScanBody {
+  start: string
+  end: string
+  frame?: string
+  fixed: Record<string, unknown> // 固定字段（含 symbol）
+  vary: Record<string, unknown[]> // 扫描字段 → 候选值
+  metric?: ScanMetric
+  top?: number
+}
+
+export interface ScanRow {
+  params: Record<string, string | number> // 该组扫描字段的取值
+  metrics: {
+    sharpe: string
+    total_return: string
+    annualized_return: string
+    max_drawdown: string
+    win_rate: string
+    final_equity: string
+    n_buys: number
+    n_sells: number
+  }
+}
+
+export interface ScanResult {
+  metric: string
+  total: number // 扫了多少组
+  shown: number // 回了前几组
+  vary_keys: string[]
+  rows: ScanRow[]
+  overfit_note: string
+}
+
+export async function runScan(body: ScanBody): Promise<ScanResult> {
+  return post<ScanResult>('/api/scan', body)
 }
 
 // 网格阶梯（FR-4）

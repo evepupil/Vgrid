@@ -89,7 +89,12 @@ export default function Dashboard() {
         </Panel>
         <Panel kick="净值曲线" en="EQUITY" meta={st ? '实例实时' : '日线'} className="rise d4">
           {st ? (
-            <EquityChart state={st} />
+            <EquityChart
+              equity={st.equity_curve}
+              buyHold={st.buy_hold_curve}
+              drawdown={st.drawdown_curve}
+              metrics={st.metrics}
+            />
           ) : (
             <Placeholder title="净值 · 回撤 · 买入持有对照" fr="FR-5.1 / 5.2 / 5.3" />
           )}

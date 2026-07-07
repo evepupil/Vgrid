@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type uPlot from 'uplot'
-import type { StateView } from '../api/client'
+import type { EquityPoint } from '../api/client'
 import { useMode, type Mode } from '../mode/context'
 import { fmt } from '../utils/format'
 import { Uplot } from './Uplot'
@@ -77,17 +77,26 @@ function Stat({ k, v, cls }: { k: string; v: string; cls?: string }) {
   )
 }
 
-interface Props {
-  state: StateView
+interface Metrics {
+  total_return: string
+  buy_hold_return: string
+  max_drawdown: string
 }
 
-/** 净值曲线：指标行 + 净值主图（网格实线 + 买入持有绿虚）+ 回撤条。 */
-export function EquityChart({ state }: Props) {
+interface Props {
+  equity: EquityPoint[]
+  buyHold: { ts: string; equity: string }[]
+  drawdown: { ts: string; drawdown: string }[]
+  metrics: Metrics
+}
+
+/** 净值曲线：指标行 + 净值主图（网格实线 + 买入持有绿虚）+ 回撤条。看盘与回测共用。 */
+export function EquityChart({ equity, buyHold, drawdown, metrics }: Props) {
   const { mode } = useMode()
-  const eq = state.equity_curve
-  const bh = state.buy_hold_curve
-  const dd = state.drawdown_curve
-  const m = state.metrics
+  const eq = equity
+  const bh = buyHold
+  const dd = drawdown
+  const m = metrics
 
   const eqData = useMemo<uPlot.AlignedData>(() => {
     const xs = eq.map((p) => new Date(p.ts).getTime() / 1000)
