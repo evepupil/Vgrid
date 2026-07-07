@@ -142,6 +142,9 @@ export interface PortfolioSummary {
   n_running: number
   total_equity: string
   total_realized_pnl: string
+  total_unrealized_pnl: string // 浮动合计（跨标的净敞口）
+  total_committed: string // 占用合计
+  total_cap: string // 总额度合计
   total_fee: string
 }
 
@@ -154,9 +157,16 @@ export interface InstanceView {
   last_ts: string | null
   equity: string
   realized_pnl: string
+  unrealized_pnl: string // 浮动
+  committed: string // 占用
+  capital_cap: string // 资金上限
+  position_shares: number
+  sharpe: string
+  max_drawdown: string
   total_fee: string
   open_lots: number
   n_fills: number
+  equity_spark: string[] // 迷你净值（降采样 ~24 点）
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {

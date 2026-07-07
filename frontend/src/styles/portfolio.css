@@ -1,0 +1,145 @@
+/* 组合总览（FR-2）：汇总条 + 实例卡片网格 + 迷你净值 sparkline。搬自原型 console.html。 */
+
+/* 汇总条：四格发丝分隔 */
+.pf-sum {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.pf-sum .c {
+  background: var(--panel);
+  padding: 15px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pf-sum .k {
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.pf-sum .v {
+  font-family: var(--font-m);
+  font-size: 24px;
+  font-weight: 600;
+}
+.pf-sum .s {
+  font-family: var(--font-m);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* 实例卡片网格 */
+.insts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 6px;
+}
+.icard {
+  cursor: pointer;
+  transition: 0.18s;
+}
+.icard:hover {
+  transform: translateY(-2px);
+}
+.icard:hover .panel {
+  border-color: var(--acc-glow);
+}
+.icard .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 13px 14px;
+}
+.icard .nm {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.icard .nm b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.icard .nm span {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.05em;
+}
+.icard .st {
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  padding: 2px 7px;
+  border: 1px solid;
+  border-radius: 2px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.icard .st .dot {
+  border-radius: 50%;
+}
+.icard .px {
+  padding: 0 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.icard .px b {
+  font-family: var(--font-m);
+  font-size: 22px;
+  font-weight: 600;
+}
+.icard .px span {
+  font-family: var(--font-m);
+  font-size: 11px;
+}
+.icard .spark {
+  padding: 8px 14px 0;
+}
+.icard .grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--hair);
+  border-top: 1px solid var(--hair);
+  margin-top: 10px;
+}
+.icard .cell {
+  background: var(--panel);
+  padding: 9px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.icard .cell .l {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.icard .cell .n {
+  font-family: var(--font-m);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* sparkline：拉满卡宽 */
+.spark {
+  width: 100%;
+  display: block;
+}
+
+@media (max-width: 1180px) {
+  .insts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pf-sum {
+    grid-template-columns: 1fr 1fr;
+  }
+}

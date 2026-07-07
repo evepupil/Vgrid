@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getQuotes, getState, listRunners } from '../api/client'
 import { EquityChart } from '../components/EquityChart'
 import { GridLadder } from '../components/GridLadder'
@@ -20,8 +21,14 @@ export default function Dashboard() {
 
   const runners = useQuery({ queryKey: ['runners'], queryFn: listRunners, refetchInterval: POLL })
   const list = runners.data ?? []
+  // 总览页点卡片带 ?inst=<db> 进来时预选该实例；手动切换后以本地选择为准
+  const [params] = useSearchParams()
+  const fromUrl = params.get('inst')
   const [selDb, setSelDb] = useState<string | null>(null)
-  const selected = list.find((r) => r.db_path === selDb) ?? list[0]
+  const selected =
+    list.find((r) => r.db_path === selDb) ??
+    list.find((r) => r.db_path === fromUrl) ??
+    list[0]
 
   const state = useQuery({
     queryKey: ['state', selected?.db_path],
