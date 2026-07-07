@@ -3,8 +3,10 @@
 from collections.abc import Callable
 from decimal import Decimal
 
+import pytest
+
 from vgrid.core import GridConfig, Side
-from vgrid.core.enums import BaseBuildMode
+from vgrid.core.enums import BaseBuildMode, SpacingMode
 from vgrid.strategy import GridEngine
 
 MakeConfig = Callable[..., GridConfig]
@@ -160,3 +162,54 @@ def test_desired_orders_is_read_only(make_config: MakeConfig) -> None:
 
     assert engine.ladder.bottom == before_bottom
     assert len(engine.ladder.lines) == before_len
+
+
+def test_geometric_engine_round_trip_and_breakout(make_config: MakeConfig) -> None:
+    """回归 #5：等比模式端到端——跌买涨卖赚差价 + 上破后整窗按 ratio 上移追踪。"""
+    engine = GridEngine(
+        make_config(spacing_mode=SpacingMode.GEOMETRIC, base_build_mode=BaseBuildMode.ZERO)
+    )
+    engine.start(Decimal("1.20"))
+    engine.step(Decimal("1.00"))  # 跌到下沿，逐格买入
+    engine.step(Decimal("1.20"))  # 涨回，逐格止盈
+    assert engine.realized_pnl > 0
+    assert engine.open_lots == 0
+
+    top_before = engine.ladder.top
+    engine.step(Decimal("1.50"))  # 冲破上沿
+    assert engine.ladder.top > top_before  # 等比整窗上移追踪
+
+
+def test_upper_breakout_partial_rebuild(make_config: MakeConfig) -> None:
+    """回归 #5：upper_rebuild_ratio 中间值按比例重建，份额是全量重建的一部分。"""
+    full = GridEngine(
+        make_config(base_build_mode=BaseBuildMode.ZERO, upper_rebuild_ratio=Decimal("1"))
+    )
+    full.start(Decimal("1.00"))
+    full.step(Decimal("1.32"))
+
+    half = GridEngine(
+        make_config(base_build_mode=BaseBuildMode.ZERO, upper_rebuild_ratio=Decimal("0.5"))
+    )
+    half.start(Decimal("1.00"))
+    half.step(Decimal("1.32"))
+
+    assert half.open_lots == full.open_lots == 1  # 重建同一批格子
+    half_shares = sum(lot.shares for lot in half.open_positions)
+    full_shares = sum(lot.shares for lot in full.open_positions)
+    assert 0 < half_shares < full_shares  # 半量重建份额约为全量一半
+
+
+def test_start_twice_raises(make_config: MakeConfig) -> None:
+    """回归 #5：重复 start 抛错。"""
+    engine = GridEngine(make_config(base_build_mode=BaseBuildMode.ZERO))
+    engine.start(Decimal("1.10"))
+    with pytest.raises(RuntimeError, match="已启动"):
+        engine.start(Decimal("1.10"))
+
+
+def test_step_before_start_raises(make_config: MakeConfig) -> None:
+    """回归 #5：未 start 就 step 抛错。"""
+    engine = GridEngine(make_config(base_build_mode=BaseBuildMode.ZERO))
+    with pytest.raises(RuntimeError, match="未启动"):
+        engine.step(Decimal("1.10"))

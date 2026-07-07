@@ -1,0 +1,3 @@
+# 全仓统一 LF 换行，和已提交的 blob 一致。
+# 修掉 core.autocrlf=true 在 Windows 下把 LF 文件永远标成 modified 的幽灵 diff（review #6）。
+* text=auto eol=lf

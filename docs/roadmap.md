@@ -74,6 +74,6 @@ cli/       命令行入口                                      [M2]
 
 ## 工程约定
 
-- Python 3.12，mypy `strict` + ruff（含 ANN 类型标注）+ pytest，门禁全绿才 commit。
+- Python 3.13，mypy `strict` + ruff（含 ANN 类型标注）+ pytest，门禁全绿才 commit。
 - 金额 / 价格用 `Decimal`，杜绝浮点误差；份额为 `int`（100 的整数倍）。
 - 每个大模块在 `docs/模块设计/<模块>.md` 维护归档（设计 / 改动历史 / 实现细节），与实现同步更新。

@@ -3,7 +3,7 @@ name = "vgrid"
 version = "0.1.0"
 description = "ETF 网格量化交易系统（回测 / 模拟盘 / 实盘执行）"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 authors = [{ name = "evepupil", email = "1766468434@qq.com" }]
 dependencies = [
     "akshare>=1.12",
