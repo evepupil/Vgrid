@@ -37,6 +37,32 @@ export async function deleteStrategy(name: string): Promise<void> {
   await del(`/api/strategies/${encodeURIComponent(name)}`)
 }
 
+// 策略库增强（FR-9.2）+ 部署（FR-9.3）
+export interface EnrichedStrategy extends StrategySummary {
+  status: 'draft' | 'running' | 'idle'
+  instance_name: string | null
+  sharpe: string | null // 关联实例夏普，草稿为 null
+}
+
+export interface DeployResult {
+  instance_name: string
+  db_path: string
+  symbol: string
+  mode: string
+  start_command: string // 开始跟盘的 CLI 命令
+}
+
+export async function listStrategiesEnriched(): Promise<EnrichedStrategy[]> {
+  return get<EnrichedStrategy[]>('/api/strategies/enriched')
+}
+
+export async function deployStrategy(
+  name: string,
+  mode: 'live' | 'sim' = 'sim',
+): Promise<DeployResult> {
+  return post<DeployResult>(`/api/strategies/${encodeURIComponent(name)}/deploy`, { mode })
+}
+
 // 回测
 export interface BacktestMetrics {
   initial_cash: string

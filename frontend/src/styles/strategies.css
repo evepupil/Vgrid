@@ -1,0 +1,160 @@
+/* 策略库（FR-9）：策略表 + 部署横幅 + 编辑器弹层。表基/表单样式在 shell/backtest.css。 */
+
+.stbl-new {
+  padding: 8px 16px !important;
+  font-size: 12px !important;
+  margin: 0 !important;
+}
+.stbl-scroll {
+  overflow-x: auto;
+}
+.stbl td .act {
+  color: var(--acc);
+  cursor: pointer;
+  padding: 0 5px;
+}
+.stbl td .act:hover {
+  text-decoration: underline;
+}
+.stbl td .act.faint {
+  color: var(--faint);
+  cursor: default;
+}
+.stbl td .act.faint:hover {
+  text-decoration: none;
+}
+.stbl td .act.del:hover {
+  color: var(--down);
+}
+.tagchip {
+  font-family: var(--font-m);
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border: 1px solid var(--hair);
+  color: var(--dim);
+  border-radius: 2px;
+}
+.st-idle {
+  color: var(--dim);
+}
+
+/* 部署成功横幅 */
+.deploy-banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--acc-bg);
+  border: 1px solid var(--acc-glow);
+  border-radius: 3px;
+  padding: 13px 16px;
+  margin-bottom: 12px;
+}
+.deploy-msg {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.deploy-msg b {
+  color: var(--acc);
+}
+.deploy-msg .link {
+  color: var(--acc);
+  cursor: pointer;
+  text-decoration: underline;
+  margin: 0 3px;
+}
+.deploy-cmd {
+  display: block;
+  font-family: var(--font-m);
+  font-size: 11.5px;
+  color: var(--dim);
+  background: var(--bg);
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.deploy-x {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  cursor: pointer;
+  color: var(--faint);
+  font-size: 16px;
+}
+.deploy-x:hover {
+  color: var(--ink);
+}
+
+/* 编辑器弹层 */
+.editor-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 7, 10, 0.72);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  z-index: 60;
+  overflow-y: auto;
+}
+.editor {
+  width: 460px;
+  max-width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--hair2);
+  border-radius: 4px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.editor-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hair);
+}
+.editor-h b {
+  font-size: 14px;
+}
+.editor-x {
+  cursor: pointer;
+  color: var(--faint);
+  font-size: 18px;
+  line-height: 1;
+}
+.editor-x:hover {
+  color: var(--ink);
+}
+.editor .frow3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.fg-err {
+  color: var(--down);
+  font-family: var(--font-m);
+  font-size: 10.5px;
+}
+.editor-acts {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.editor-acts .run {
+  margin-top: 0;
+  padding: 9px 20px;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--hair2);
+  color: var(--dim);
+  font-family: var(--font-m);
+  font-size: 12px;
+  padding: 9px 18px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  border-color: var(--hair2);
+  color: var(--ink);
+}
