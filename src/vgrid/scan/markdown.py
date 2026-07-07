@@ -16,7 +16,7 @@ from vgrid.scan.space import ScanSpec
 
 def render_scan_report(rows: Sequence[ScanRow], metric: str, top_n: int, spec: ScanSpec) -> str:
     """渲染 top-N 扫描结果对比表。``rows`` 应已按 ``metric`` 排好序。"""
-    shown = rows[:top_n]
+    shown = rows[: max(0, top_n)]  # 负数会切出错误切片（丢末行），钳到 0
     vary_keys = list(spec.vary)
     header = [*vary_keys, "夏普", "总收益", "年化", "最大回撤", "胜率", "末权益"]
 

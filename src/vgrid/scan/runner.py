@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
@@ -37,15 +37,27 @@ def run_scan(
     bars: BarSeries,
     *,
     initial_cash: Decimal | None = None,
+    progress: Callable[[int, int], None] | None = None,
 ) -> tuple[ScanRow, ...]:
-    """对每组 config 跑回测，收集指标。"""
-    return tuple(ScanRow(c, simulate(c, bars, initial_cash=initial_cash).metrics) for c in configs)
+    """对每组 config 跑回测，收集指标。
+
+    ``progress`` 给定时，每跑完一组回调一次 ``(已完成数, 总数)``，供长扫描打进度。
+    """
+    total = len(configs)
+    rows: list[ScanRow] = []
+    for i, c in enumerate(configs, start=1):
+        rows.append(ScanRow(c, simulate(c, bars, initial_cash=initial_cash).metrics))
+        if progress is not None:
+            progress(i, total)
+    return tuple(rows)
 
 
 def metric_value(row: ScanRow, metric: Metric) -> Decimal:
     """取某行指定指标的排序值（越大越好）。
 
-    ``calmar = 年化 / 最大回撤``；回撤为 0（从未亏损）返回极大值，排在最前。
+    ``calmar = 年化 / 最大回撤``。回撤为 0 有两种：真赚了钱且一路没回撤（年化 > 0，
+    确实优秀，给极大值排最前）；或压根没交易 / 没赚钱（权益一条直线，年化 ≤ 0）——
+    后者只按年化算，自然排到后面，堵住「躺平配置刷分排第一」。
     """
     m = row.metrics
     if metric == "sharpe":
@@ -55,7 +67,7 @@ def metric_value(row: ScanRow, metric: Metric) -> Decimal:
     if metric == "annualized_return":
         return m.annualized_return
     if m.max_drawdown == 0:
-        return _INFINITE
+        return _INFINITE if m.annualized_return > 0 else m.annualized_return
     return m.annualized_return / m.max_drawdown
 
 

@@ -77,3 +77,26 @@ def test_too_many_combos_rejected() -> None:
     spec = ScanSpec(fixed=_FIXED, vary={"grid_count": list(range(5001))})
     with pytest.raises(ValueError, match="超过上限"):
         spec.expand()
+
+
+def test_unknown_vary_field_rejected() -> None:
+    # 拼错字段名（grid_counts），旧实现会被 from_dict 静默丢弃、无声失效
+    with pytest.raises(ValueError, match="未知的 GridConfig 字段"):
+        ScanSpec(fixed=_FIXED, vary={"grid_counts": [4, 8]})
+
+
+def test_unknown_fixed_field_rejected() -> None:
+    with pytest.raises(ValueError, match="未知的 GridConfig 字段"):
+        ScanSpec(fixed={**_FIXED, "grd_count": 4}, vary={"grid_count": [4, 8]})
+
+
+def test_fixed_vary_overlap_rejected() -> None:
+    with pytest.raises(ValueError, match="同时出现在 fixed 和 vary"):
+        ScanSpec(fixed={**_FIXED, "grid_count": 4}, vary={"grid_count": [4, 8]})
+
+
+def test_vary_candidates_deduped() -> None:
+    spec = ScanSpec(fixed=_FIXED, vary={"grid_count": [4, 4, 6]})
+    assert spec.vary["grid_count"] == [4, 6]  # 重复值去掉，保持顺序
+    assert spec.size == 2
+    assert len(spec.expand()) == 2
