@@ -98,6 +98,35 @@ def test_snapshot_has_realized_and_unrealized_separated() -> None:
     assert snap["unrealized_pnl"] == Decimal(0)
 
 
+def test_drawdown_and_buyhold_curves_aligned() -> None:
+    """回撤 / 买入持有序列与净值曲线同点数、同时间戳。"""
+    conn = connect()
+    _seed(conn)
+    view = load_state(conn)
+    assert view is not None
+    n = len(view.equity_curve)
+    assert len(view.drawdown_curve) == n
+    assert len(view.buy_hold_curve) == n
+    for eq, (dd_ts, dd), (bh_ts, _bh) in zip(
+        view.equity_curve, view.drawdown_curve, view.buy_hold_curve, strict=True
+    ):
+        assert dd_ts == eq.ts
+        assert bh_ts == eq.ts
+        assert dd <= Decimal(0)  # 回撤恒 ≤ 0
+
+
+def test_buyhold_marks_to_market() -> None:
+    """买入持有权益随价格走：首价买入，末价高于首价则末权益更高。"""
+    conn = connect()
+    save_config(conn, _cfg())
+    save_tick(conn, datetime(2024, 1, 2, 9, 30), Decimal("1.00"))
+    save_tick(conn, datetime(2024, 1, 2, 9, 31), Decimal("1.10"))
+    view = load_state(conn)
+    assert view is not None
+    bh = view.buy_hold_curve
+    assert bh[-1][1] > bh[0][1]  # 涨了，买入持有权益升
+
+
 def test_unrealized_nonzero_when_holding() -> None:
     """持仓未平且现价高于成本时，浮动为正。"""
     conn = connect()

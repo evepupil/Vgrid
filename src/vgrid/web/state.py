@@ -48,6 +48,8 @@ class StateView:
     metrics: dict[str, object]
     fills: list[Fill]
     equity_curve: list[EquityPoint]
+    drawdown_curve: list[tuple[datetime, Decimal]]  # 逐点回撤比例（<=0），与 equity_curve 同点
+    buy_hold_curve: list[tuple[datetime, Decimal]]  # 同笔资金买入持有的逐点权益，同点
     fill_marks: list[FillMark]
     n_ticks: int
     ladder: LadderView | None
@@ -89,6 +91,11 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
     buy_hold = _buy_hold(ticks, initial, config)
 
     sampled, indices = downsample(full_curve, curve_points)
+    # 回撤 / 买入持有序列：在全量曲线上算，再按降采样索引对齐到 equity_curve 的点
+    dd_full = _drawdown_series(full_curve)
+    bh_full = _buy_hold_series(ticks, initial, config)
+    drawdown_curve = [(full_curve[i].ts, dd_full[i]) for i in indices]
+    buy_hold_curve = [(full_curve[i].ts, bh_full[i]) for i in indices]
     fill_marks = [
         FillMark(
             index=_map_to_sampled(tick_idx, indices),
@@ -140,6 +147,8 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
         },
         fills=list(fills),
         equity_curve=sampled,
+        drawdown_curve=drawdown_curve,
+        buy_hold_curve=buy_hold_curve,
         fill_marks=fill_marks,
         n_ticks=len(ticks),
         ladder=ladder,
@@ -150,6 +159,35 @@ def _ratio(numer: Decimal, denom: Decimal) -> Decimal:
     if denom == 0:
         return Decimal(0)
     return numer / denom
+
+
+def _drawdown_series(curve: list[EquityPoint]) -> list[Decimal]:
+    """逐点回撤比例：``(权益 − 迄今峰值) / 峰值``，均 ≤ 0。最小值即最大回撤。"""
+    out: list[Decimal] = []
+    peak = Decimal(0)
+    for p in curve:
+        peak = max(peak, p.equity)
+        out.append((p.equity - peak) / peak if peak > 0 else Decimal(0))
+    return out
+
+
+def _buy_hold_series(
+    ticks: list[tuple[datetime, Decimal]], initial: Decimal, config: GridConfig
+) -> list[Decimal]:
+    """同笔资金首 tick 按手取整建仓后，逐 tick mark-to-market 的权益序列。
+
+    与网格净值同口径：持仓按当时价估值、不扣卖出费（卖出费只在真实平仓时结算），
+    两条曲线才能公平对照。买不起一手则全程持币不变。
+    """
+    if not ticks or initial <= 0:
+        return [initial for _ in ticks]
+    entry = ticks[0][1]
+    shares = shares_for_amount(initial, entry, config.lot_size)
+    if shares <= 0:
+        return [initial for _ in ticks]
+    buy_notional = entry * shares
+    leftover = initial - (buy_notional + config.fee.compute(buy_notional))
+    return [leftover + price * shares for _, price in ticks]
 
 
 def _buy_hold(

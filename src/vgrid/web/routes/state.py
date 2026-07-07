@@ -37,6 +37,12 @@ def _state_to_dict(view: StateView) -> dict[str, object]:
         "metrics": jsonify(view.metrics),
         "fills": [_fill_to_dict(f) for f in view.fills],
         "equity_curve": [_point_to_dict(p) for p in view.equity_curve],
+        "drawdown_curve": [
+            {"ts": ts.isoformat(), "drawdown": str(v)} for ts, v in view.drawdown_curve
+        ],
+        "buy_hold_curve": [
+            {"ts": ts.isoformat(), "equity": str(v)} for ts, v in view.buy_hold_curve
+        ],
         "fill_marks": [_mark_to_dict(m) for m in view.fill_marks],
         "n_ticks": view.n_ticks,
         "ladder": ladder_to_dict(view.ladder) if view.ladder is not None else None,
