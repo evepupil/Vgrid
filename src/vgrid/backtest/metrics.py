@@ -3,6 +3,10 @@
 从权益曲线 + 成交序列算收益率 / 年化 / 最大回撤 / 夏普 / 胜率 / 盈亏比 / 手续费 /
 买入持有对照。金额与比率一律 ``Decimal``：年化用 ``(1+r)^(1/years)``（``ln/exp``），
 夏普用 ``sqrt``，都走 Decimal 上下文，不在统计环节引入 float。
+
+**两个「年化」口径不同**（review #11）：``_annualized`` 走自然流逝时间（首末相差
+日历天数 / 365）复利，是 CAGR；``sharpe_of`` 走交易周期采样（日线一年 252 个交易日）
+开方年化。各自都说得通，但同一份报告里数字口径不一样，报告里已加脚注提示。
 """
 
 from __future__ import annotations
@@ -144,7 +148,12 @@ def _profit_loss_ratio(sell_pnls: list[Decimal]) -> Decimal:
 
 
 def _buy_hold(bars: tuple[Bar, ...], initial_cash: Decimal, config: GridConfig) -> Decimal:
-    """同笔资金在首根开盘按手取整买入、持有到末根收盘卖出（扣两边手续费）的收益率。"""
+    """同笔资金在首根开盘按手取整买入、持有到末根收盘卖出（扣两边手续费）的收益率。
+
+    分母用 ``initial_cash`` 而非实际投入（成交额 + 买入费），和网格 ``total_return``
+    保持同口径——按手取整后没投满的零头算作买入持有策略的闲置资金。这样报告里
+    「网格策略 / 买入持有」两列的对照才公平（review #10）。
+    """
     if not bars or initial_cash <= 0:
         return Decimal(0)
     entry = bars[0].open
@@ -155,4 +164,4 @@ def _buy_hold(bars: tuple[Bar, ...], initial_cash: Decimal, config: GridConfig) 
     cost = buy_notional + config.fee.compute(buy_notional)
     exit_notional = bars[-1].close * shares
     proceeds = exit_notional - config.fee.compute(exit_notional)
-    return _ratio(proceeds - cost, cost)
+    return _ratio(proceeds - cost, initial_cash)

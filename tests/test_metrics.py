@@ -107,6 +107,39 @@ def test_buy_hold_positive_when_price_up(make_config: MakeConfig) -> None:
     assert m.buy_hold_return > 0
 
 
+def test_buy_hold_uses_initial_cash_denominator(make_config: MakeConfig) -> None:
+    """回归 #10：买入持有分母用 initial_cash（与网格 total_return 同口径），非实际投入。"""
+    bars = (
+        Bar(
+            ts=datetime(2024, 1, 1),
+            open=Decimal("1.40"),
+            high=Decimal("1.40"),
+            low=Decimal("1.40"),
+            close=Decimal("1.40"),
+            volume=Decimal("0"),
+        ),
+        Bar(
+            ts=datetime(2024, 1, 2),
+            open=Decimal("1.54"),
+            high=Decimal("1.54"),
+            low=Decimal("1.54"),
+            close=Decimal("1.54"),
+            volume=Decimal("0"),
+        ),
+    )
+    # 本金 150 只买得起 100 份 @1.40（成本 140.10），10 元零头闲置；
+    # @1.54 卖得 153.90，净 13.80 → 分母是本金 150，不是投入的 140.10
+    m = compute_metrics(
+        (_eq("150"), _eq("150")),
+        (),
+        bars,
+        initial_cash=Decimal("150"),
+        config=make_config(),
+        frame=Frame.DAILY,
+    )
+    assert m.buy_hold_return == Decimal("13.80") / Decimal("150")
+
+
 def test_fee_and_count_aggregation(make_config: MakeConfig) -> None:
     eq = (_eq("100"), _eq("100"))
     bars = (_bar("2024-01-01"), _bar("2024-07-02"))

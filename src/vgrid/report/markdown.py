@@ -50,6 +50,9 @@ def render_report(result: BacktestResult, config: GridConfig) -> str:
         f"| 盈亏比 | {dec(m.profit_loss_ratio)} | — |",
         f"| 末权益 | {cash(m.final_equity)} 元 | — |",
         "",
+        "> 注：年化按自然日复利（首末相差天数 / 365）；夏普按交易周期年化（日线一年 252"
+        " 个交易日）。两个「年化」口径不同，别直接相较。",
+        "",
         "## 手续费",
         "",
         f"- 累计手续费：**{cash(m.total_fee)}** 元",
