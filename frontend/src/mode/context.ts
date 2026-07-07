@@ -14,9 +14,9 @@ export const ModeContext = createContext<ModeContextValue | null>(null)
 
 export function readInitialMode(): Mode {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'sim' ? 'sim' : 'live'
+    return localStorage.getItem(STORAGE_KEY) === 'live' ? 'live' : 'sim'
   } catch {
-    return 'live'
+    return 'sim'
   }
 }
 

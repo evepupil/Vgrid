@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from vgrid.web.portfolio import InstanceView, PortfolioManager, WatchItem
@@ -19,13 +20,17 @@ class WatchBody(BaseModel):
 
 
 @router.get("/api/portfolio/summary")
-def summary(request: Request) -> dict[str, object]:
-    return _mgr(request).summary()
+def summary(
+    request: Request, mode: Literal["live", "sim"] = Query(default="sim")
+) -> dict[str, object]:
+    return _mgr(request, mode).summary()
 
 
 @router.get("/api/portfolio/runners")
-def runners(request: Request) -> list[dict[str, object]]:
-    return [_instance_dict(i) for i in _mgr(request).list_instances()]
+def runners(
+    request: Request, mode: Literal["live", "sim"] = Query(default="sim")
+) -> list[dict[str, object]]:
+    return [_instance_dict(i) for i in _mgr(request, mode).list_instances()]
 
 
 @router.get("/api/watchlist")
@@ -58,8 +63,8 @@ def remove_watch(symbol: str, request: Request) -> dict[str, object]:
     return {"removed": symbol}
 
 
-def _mgr(request: Request) -> PortfolioManager:
-    return PortfolioManager(Path(request.app.state.data_dir))
+def _mgr(request: Request, mode: str = "sim") -> PortfolioManager:
+    return PortfolioManager(Path(request.app.state.data_dir), mode=mode)
 
 
 def _instance_dict(i: InstanceView) -> dict[str, object]:

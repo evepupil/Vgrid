@@ -1,7 +1,9 @@
 """portfolio 组合层：聚合多个模拟盘实例 + 关注列表（纯逻辑 + 文件/DB I/O）。
 
-实例 = ``~/.vgrid/paper/`` 下的 SQLite DB（每个 ``paper run --db`` 一个）。扫描目录
-读各 DB replay 出状态聚合总资产。关注列表单独存 ``~/.vgrid/portfolio.sqlite``。
+实例 = ``~/.vgrid/paper/{mode}/`` 下的 SQLite DB（``mode``∈{live,sim}，每个
+``paper run --db`` 一个）。只扫当前 mode 目录读各 DB replay 出状态聚合总资产，两套
+mode 物理隔离互不可见（FR-1.1）。关注列表单独存 ``~/.vgrid/portfolio.sqlite``
+（跨 mode 共享，FR-1.3）。
 
 只读聚合（启停走 ``paper run`` CLI），网页看总资产 / 在跑实例 / 关注。``在跑`` 靠
 最近 tick 时间判断（5 分钟内有 tick 视为活跃）。
@@ -67,13 +69,19 @@ class WatchItem:
 class PortfolioManager:
     """组合管理：扫 paper DB 聚合 + 关注列表 CRUD。"""
 
-    def __init__(self, data_dir: Path, *, paper_dir: Path | None = None) -> None:
+    def __init__(
+        self, data_dir: Path, *, mode: str = "sim", paper_dir: Path | None = None
+    ) -> None:
+        if mode not in ("live", "sim"):
+            raise ValueError(f"mode 必须是 live 或 sim，收到：{mode}")
         self._data_dir = data_dir
-        self._paper_dir = paper_dir or (data_dir / "paper")
+        self._mode = mode
+        # mode 目录隔离：paper/live/ 与 paper/sim/ 各自独立（FR-1.1）。
+        self._paper_dir = paper_dir or (data_dir / "paper" / mode)
         self._db_path = data_dir / "portfolio.sqlite"
 
     def list_instances(self) -> list[InstanceView]:
-        """扫描 paper 目录，读各 DB replay 出实例视图。无 config 的 DB 跳过。"""
+        """扫描当前 mode 的 paper 目录，读各 DB replay 出实例视图。无 config 的 DB 跳过。"""
         views: list[InstanceView] = []
         if not self._paper_dir.exists():
             return views

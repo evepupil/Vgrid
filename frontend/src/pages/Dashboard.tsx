@@ -20,7 +20,7 @@ export default function Dashboard() {
   const { mode } = useMode()
   const simMode = mode === 'sim'
 
-  const runners = useQuery({ queryKey: ['runners'], queryFn: listRunners, refetchInterval: POLL })
+  const runners = useQuery({ queryKey: ['runners', mode], queryFn: listRunners, refetchInterval: POLL })
   const list = runners.data ?? []
   // 总览页点卡片带 ?inst=<db> 进来时预选该实例；手动切换后以本地选择为准
   const [params] = useSearchParams()

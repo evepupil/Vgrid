@@ -12,11 +12,13 @@ import { Panel } from '../components/Panel'
 import { Placeholder } from '../components/Placeholder'
 import { SectionTitle } from '../components/SectionTitle'
 import { StrategyEditor } from '../components/StrategyEditor'
+import { useMode } from '../mode/context'
 
 const POLL = 20000
 
 /** 策略库（FR-9）：策略表 + 状态/夏普/关联实例 + 新建/编辑（react-hook-form）+ 部署。 */
 export default function Strategies() {
+  const { mode } = useMode()
   const qc = useQueryClient()
   const nav = useNavigate()
   const [params] = useSearchParams()
@@ -28,7 +30,7 @@ export default function Strategies() {
   const [deployed, setDeployed] = useState<DeployResult | null>(null)
 
   const q = useQuery({
-    queryKey: ['strategies-enriched'],
+    queryKey: ['strategies-enriched', mode],
     queryFn: listStrategiesEnriched,
     refetchInterval: POLL,
   })
@@ -36,7 +38,7 @@ export default function Strategies() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['strategies-enriched'] })
   const deploy = useMutation({
-    mutationFn: (name: string) => deployStrategy(name, 'sim'),
+    mutationFn: (name: string) => deployStrategy(name),
     onSuccess: (r) => {
       setDeployed(r)
       invalidate()

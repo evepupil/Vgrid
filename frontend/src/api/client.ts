@@ -1,3 +1,12 @@
+import { type Mode, readInitialMode } from '../mode/context'
+
+// 当前交易模式（实盘/模拟盘）。模块加载即按 localStorage 初始化，ModeProvider 切换时同步；
+// mode 相关请求自动带 ?mode=（FR-1.2）。
+let currentMode: Mode = readInitialMode()
+export function setApiMode(m: Mode): void {
+  currentMode = m
+}
+
 // 策略库
 export interface StrategySummary {
   name: string
@@ -53,12 +62,12 @@ export interface DeployResult {
 }
 
 export async function listStrategiesEnriched(): Promise<EnrichedStrategy[]> {
-  return get<EnrichedStrategy[]>('/api/strategies/enriched')
+  return get<EnrichedStrategy[]>(`/api/strategies/enriched?mode=${currentMode}`)
 }
 
 export async function deployStrategy(
   name: string,
-  mode: 'live' | 'sim' = 'sim',
+  mode: Mode = currentMode,
 ): Promise<DeployResult> {
   return post<DeployResult>(`/api/strategies/${encodeURIComponent(name)}/deploy`, { mode })
 }
@@ -240,11 +249,11 @@ export interface InstanceView {
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
-  return get<PortfolioSummary>('/api/portfolio/summary')
+  return get<PortfolioSummary>(`/api/portfolio/summary?mode=${currentMode}`)
 }
 
 export async function listRunners(): Promise<InstanceView[]> {
-  return get<InstanceView[]>('/api/portfolio/runners')
+  return get<InstanceView[]>(`/api/portfolio/runners?mode=${currentMode}`)
 }
 
 // 关注列表

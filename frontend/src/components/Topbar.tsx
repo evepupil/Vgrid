@@ -21,7 +21,7 @@ const DOT: Record<string, string> = {
 export function Topbar() {
   const { mode } = useMode()
   const summary = useQuery({
-    queryKey: ['portfolio-summary'],
+    queryKey: ['portfolio-summary', mode],
     queryFn: getPortfolioSummary,
     refetchInterval: POLL,
   })

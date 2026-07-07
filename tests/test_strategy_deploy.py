@@ -11,6 +11,7 @@ from vgrid.core.config import GridConfig
 from vgrid.core.enums import BaseBuildMode
 from vgrid.store.db import connect
 from vgrid.store.repository import load_config
+from vgrid.web.portfolio import PortfolioManager
 from vgrid.web.strategy_deploy import (
     InstanceRef,
     deploy_strategy,
@@ -100,3 +101,17 @@ def test_deployed_instance_shows_in_enrich(tmp_path: Path) -> None:
     r = enrich_strategies(strategies, refs)[0]
     assert r.status == "idle"
     assert r.instance_name == "恒生网格"
+
+
+def test_deploy_lands_in_mode_dir(tmp_path: Path) -> None:
+    """部署落 paper/{mode}/（routes 层拼路径口径）：该 mode 组合层能扫到、另一 mode 扫不到。"""
+    strategies = tmp_path / "strategies"
+    _write(strategies, "恒生网格")
+    paper_dir = tmp_path / "paper" / "sim"  # 模拟 routes：data_dir/paper/{mode}
+    result = deploy_strategy(strategies, paper_dir, "恒生网格", mode="sim")
+
+    assert (paper_dir / "恒生网格.sqlite").exists()
+    assert "paper/sim" in result.db_path.replace("\\", "/")
+    sim_insts = PortfolioManager(tmp_path, mode="sim").list_instances()
+    assert len(sim_insts) == 1 and sim_insts[0].name == "恒生网格"
+    assert PortfolioManager(tmp_path, mode="live").list_instances() == []

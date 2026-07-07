@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react'
+import { setApiMode } from '../api/client'
 import { ModeContext, readInitialMode, STORAGE_KEY, type Mode } from './context'
 
 /** 全局交易模式 Provider：把模式写到根元素 data-mode（CSS 靠它切换强调色）并持久化。 */
@@ -11,6 +12,7 @@ export function ModeProvider({ children }: { children: ReactNode }) {
 
   const setMode = useCallback((m: Mode) => {
     setModeState(m)
+    setApiMode(m) // 同步给 API client，mode 相关请求随之带 ?mode=（FR-1.2）
     try {
       localStorage.setItem(STORAGE_KEY, m)
     } catch {

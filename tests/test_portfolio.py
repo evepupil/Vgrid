@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import BaseBuildMode
 from vgrid.store import connect, save_config, save_tick
@@ -24,8 +26,15 @@ def _cfg(symbol: str = "159920") -> GridConfig:
     )
 
 
-def _seed(data_dir: Path, name: str, *, symbol: str = "159920", age: timedelta) -> None:
-    paper_dir = data_dir / "paper"
+def _seed(
+    data_dir: Path,
+    name: str,
+    *,
+    symbol: str = "159920",
+    age: timedelta,
+    mode: str = "sim",
+) -> None:
+    paper_dir = data_dir / "paper" / mode
     paper_dir.mkdir(parents=True, exist_ok=True)
     conn = connect(str(paper_dir / f"{name}.sqlite"))
     save_config(conn, _cfg(symbol))
@@ -99,3 +108,38 @@ def test_watchlist_overwrite_same_symbol(tmp_path: Path) -> None:
     items = mgr.list_watchlist()
     assert len(items) == 1
     assert items[0].name == "new"
+
+
+def test_instances_isolated_by_mode(tmp_path: Path) -> None:
+    """live/sim 两套实例互不可见（FR-1.1）。"""
+    _seed(tmp_path, "sim_inst", symbol="159920", age=timedelta(minutes=1), mode="sim")
+    _seed(tmp_path, "live_inst", symbol="510300", age=timedelta(minutes=1), mode="live")
+    sim = {i.name for i in PortfolioManager(tmp_path, mode="sim").list_instances()}
+    live = {i.name for i in PortfolioManager(tmp_path, mode="live").list_instances()}
+    assert sim == {"sim_inst"}
+    assert live == {"live_inst"}
+
+
+def test_invalid_mode_raises(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        PortfolioManager(tmp_path, mode="demo")
+
+
+def test_summary_isolated_by_mode(tmp_path: Path) -> None:
+    """汇总只算当前 mode 的实例（FR-1.1）。"""
+    _seed(tmp_path, "sim_inst", symbol="159920", age=timedelta(minutes=1), mode="sim")
+    _seed(tmp_path, "live_inst", symbol="510300", age=timedelta(minutes=1), mode="live")
+    assert PortfolioManager(tmp_path, mode="sim").summary()["n_instances"] == 1
+    assert PortfolioManager(tmp_path, mode="live").summary()["n_instances"] == 1
+
+
+def test_flat_paper_not_scanned(tmp_path: Path) -> None:
+    """切9 不迁移旧数据：平铺在 paper/ 根的旧实例不被任何 mode 扫到。"""
+    flat = tmp_path / "paper"
+    flat.mkdir(parents=True)
+    conn = connect(str(flat / "old.sqlite"))
+    save_config(conn, _cfg())
+    save_tick(conn, datetime.now() - timedelta(minutes=1), Decimal("1.10"))
+    conn.close()
+    assert PortfolioManager(tmp_path, mode="sim").list_instances() == []
+    assert PortfolioManager(tmp_path, mode="live").list_instances() == []

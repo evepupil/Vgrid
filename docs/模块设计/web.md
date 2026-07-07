@@ -61,9 +61,10 @@
   name 正则 `^[A-Za-z0-9_\-一-龥]{1,64}$` 防路径穿越；list 跳过坏文件。
 - **backtest_api**：`simulate(config, bars)` → metrics + equity_curve + fills；曲线 `downsample` 到
   500 点；metrics 全字段 str 化（Decimal 保精度）。
-- **portfolio**：`list_instances` 扫 `paper/*.sqlite`，每个 `load_state` replay → `InstanceView`；
-  `summary` 聚合 total_equity / n_running / 累计盈亏；`_status` 按 last_ts 近期判 running/idle；
-  关注列表存 `~/.vgrid/portfolio.sqlite`（单独 watchlist 表）。
+- **portfolio**：`PortfolioManager(mode)` 扫 `~/.vgrid/paper/{mode}/*.sqlite`（live/sim 目录隔离，
+  FR-1.1），每个 `load_state` replay → `InstanceView`；`summary` 聚合 total_equity / n_running /
+  累计盈亏；`_status` 按 last_ts 近期判 running/idle；关注列表存 `~/.vgrid/portfolio.sqlite`
+  （单独 watchlist 表，跨 mode 共享 FR-1.3）。
 - **routes**：每个 router 用 `Request.app.state` 取配置；HTTPException + `from exc` 保留异常链；
   策略库 400（非法）/ 404（不存在）。
 - **state（M4b）**：replay `GridEngine` 逐 tick 算 `EquityPoint`；`downsample`（提到 curve.py）+
@@ -91,3 +92,11 @@
   前端重做：`frontend/`（Vite + React 19 + TS strict + AntD 6 + react-router + TanStack Query +
   @ant-design/charts），4 页面（仪表盘 / 回测 / 策略库 / 模拟盘）+ StrategyForm 组件。旧 HTML 面板
   保留作 GET / 默认页。单测覆盖 strategy_store / backtest_api / portfolio 纯逻辑 + API 端点。
+- **2026-07-07（切9 双模式数据隔离 FR-1.1~1.6 / DM-1）**：`PortfolioManager` 加 `mode` 参数，
+  实例 DB 按 `paper/{live,sim}/` 目录隔离（一实例一文件 → 目录隔离最自然，不加 mode 列）。mode 走
+  query `?mode=`：`/api/portfolio/{summary,runners}`、`/api/strategies/enriched` + deploy body，
+  `Literal["live","sim"]` 校验非法值 422；`/api/state` 不带 mode（db_path 已含 mode 目录）；关注列表
+  / 策略草稿 / 回测 / 行情 / 市场不碰 mode。前端 `client.ts` 维护 `currentMode`（localStorage 初始化 +
+  `ModeProvider` 同步），mode 相关 GET 拼 `?mode=`，queryKey 带 mode 切换即重取。默认 **sim**（实盘
+  通道未接，待切10 回 live）。旧平铺 `paper/*.sqlite` 不迁移。门禁：ruff + mypy strict（70 文件）+
+  pytest 264 全过（+7 新）；前端 build + lint。

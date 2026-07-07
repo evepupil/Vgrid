@@ -17,11 +17,11 @@ export default function Portfolio() {
   const nav = useNavigate()
 
   const summary = useQuery({
-    queryKey: ['portfolio-summary'],
+    queryKey: ['portfolio-summary', mode],
     queryFn: getPortfolioSummary,
     refetchInterval: POLL,
   })
-  const runners = useQuery({ queryKey: ['runners'], queryFn: listRunners, refetchInterval: POLL })
+  const runners = useQuery({ queryKey: ['runners', mode], queryFn: listRunners, refetchInterval: POLL })
   const list = runners.data ?? []
 
   const symbols = [...new Set(list.map((r) => r.symbol))]
