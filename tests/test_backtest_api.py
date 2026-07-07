@@ -84,3 +84,32 @@ def test_empty_bars_raises() -> None:
     empty = BarSeries(symbol="159920", frame=Frame.DAILY, bars=())
     with pytest.raises(ValueError):
         run_backtest(empty, _cfg())
+
+
+def test_result_has_drawdown_and_buyhold_curves() -> None:
+    # FR-7.3：回撤 + 买入持有对照序列，与 equity_curve 同点
+    result = run_backtest(_bars(), _cfg())
+    eq = result["equity_curve"]
+    dd = result["drawdown_curve"]
+    bh = result["buy_hold_curve"]
+    assert isinstance(eq, list) and isinstance(dd, list) and isinstance(bh, list)
+    assert len(dd) == len(eq) == len(bh)
+    assert all(isinstance(p["drawdown"], str) for p in dd)
+    assert all(isinstance(p["equity"], str) for p in bh)
+    # 回撤恒 ≤ 0
+    assert all(Decimal(p["drawdown"]) <= 0 for p in dd)
+
+
+def test_result_has_end_ladder_and_overfit_note() -> None:
+    # FR-7.4 期末阶梯 + FR-7.5 过拟合提示
+    result = run_backtest(_bars(), _cfg())
+    ladder = result["end_ladder"]
+    assert isinstance(ladder, dict)
+    assert "rungs" in ladder and isinstance(ladder["rungs"], list)
+    assert isinstance(result["overfit_note"], str)
+    assert "样本内" in str(result["overfit_note"])
+
+
+def test_end_ladder_can_be_skipped() -> None:
+    result = run_backtest(_bars(), _cfg(), include_ladder=False)
+    assert result["end_ladder"] is None

@@ -25,6 +25,7 @@ from vgrid.store.repository import load_config, load_fills, load_ticks
 from vgrid.strategy.engine import GridEngine
 from vgrid.strategy.ladder_view import LadderView, build_ladder_view
 from vgrid.web.curve import downsample
+from vgrid.web.series import drawdown_series
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,7 +93,7 @@ def load_state(conn: sqlite3.Connection, *, curve_points: int = 300) -> StateVie
 
     sampled, indices = downsample(full_curve, curve_points)
     # 回撤 / 买入持有序列：在全量曲线上算，再按降采样索引对齐到 equity_curve 的点
-    dd_full = _drawdown_series(full_curve)
+    dd_full = drawdown_series(full_curve)
     bh_full = _buy_hold_series(ticks, initial, config)
     drawdown_curve = [(full_curve[i].ts, dd_full[i]) for i in indices]
     buy_hold_curve = [(full_curve[i].ts, bh_full[i]) for i in indices]
@@ -159,16 +160,6 @@ def _ratio(numer: Decimal, denom: Decimal) -> Decimal:
     if denom == 0:
         return Decimal(0)
     return numer / denom
-
-
-def _drawdown_series(curve: list[EquityPoint]) -> list[Decimal]:
-    """逐点回撤比例：``(权益 − 迄今峰值) / 峰值``，均 ≤ 0。最小值即最大回撤。"""
-    out: list[Decimal] = []
-    peak = Decimal(0)
-    for p in curve:
-        peak = max(peak, p.equity)
-        out.append((p.equity - peak) / peak if peak > 0 else Decimal(0))
-    return out
 
 
 def _buy_hold_series(

@@ -29,6 +29,18 @@ def simulate(
     initial_cash: Decimal | None = None,
 ) -> BacktestResult:
     """对 ``bars`` 跑网格回测，返回成交、逐 K 权益曲线、绩效指标。"""
+    result, _ = simulate_with_engine(config, bars, initial_cash=initial_cash)
+    return result
+
+
+def simulate_with_engine(
+    config: GridConfig,
+    bars: BarSeries,
+    *,
+    initial_cash: Decimal | None = None,
+) -> tuple[BacktestResult, GridEngine]:
+    """同 ``simulate``，但把跑完的引擎也返回——供回测结果页画**期末阶梯快照**
+    （FR-7.4）复用引擎当前持仓/挂单，不必再 replay 一遍。"""
     if not bars.bars:
         raise ValueError("至少需要一根 K 线才能回测")
 
@@ -62,12 +74,13 @@ def simulate(
         config=config,
         frame=bars.frame,
     )
-    return BacktestResult(
+    result = BacktestResult(
         fills=tuple(fills),
         equity_curve=tuple(equity_curve),
         bars=bars.bars,
         metrics=metrics,
     )
+    return result, engine
 
 
 def _stamp(fills: list[Fill], ts: datetime) -> list[Fill]:
