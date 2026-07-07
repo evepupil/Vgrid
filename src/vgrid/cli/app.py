@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -28,22 +29,36 @@ from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
 from vgrid.web import create_app
 
+#: 已知可预期的异常：配置缺字段（KeyError）、校验 / JSON 解析失败（ValueError）、
+#: 文件缺失 / 网络中断（OSError，requests 异常也归此类）。这些打一行人话就退 1；
+#: 其余未预期异常放行 traceback，方便定位真 bug。
+_KNOWN_ERRORS = (ValueError, KeyError, OSError)
+
 
 def main(argv: list[str] | None = None) -> int:
     """命令行入口。"""
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "fetch":
-        return _cmd_fetch(args)
+        return _guard(_cmd_fetch, args)
     if args.command == "scan":
-        return _cmd_scan(args)
+        return _guard(_cmd_scan, args)
     if args.command == "paper":
         if args.paper_command == "run":
             return _cmd_paper_run(args)
         if args.paper_command == "serve":
             return _cmd_paper_serve(args)
         return _cmd_paper_status(args)
-    return _cmd_backtest(args)
+    return _guard(_cmd_backtest, args)
+
+
+def _guard(fn: Callable[[argparse.Namespace], int], args: argparse.Namespace) -> int:
+    """跑命令，把已知异常收成一行人话错误 + 退出码 1，未预期异常放行。"""
+    try:
+        return fn(args)
+    except _KNOWN_ERRORS as e:
+        print(f"错误：{e}", file=sys.stderr)
+        return 1
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -159,9 +174,15 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         print(f"{args.symbol} 在 {args.start} ~ {args.end} 无数据，无法扫描")
         return 1
 
-    rows = run_scan(spec.expand(), bars, initial_cash=args.initial_cash)
+    configs = spec.expand()
+
+    def _progress(done: int, total: int) -> None:
+        if done == total or done % 25 == 0:
+            print(f"  已扫描 {done}/{total} 组…", file=sys.stderr)
+
+    rows = run_scan(configs, bars, initial_cash=args.initial_cash, progress=_progress)
     ranked = rank(rows, args.metric)
-    top = min(args.top, len(ranked))
+    top = max(0, min(args.top, len(ranked)))  # 钳制下界，负数不再切出错误切片
     best = ranked[0]
     best_result = simulate(best.config, bars, initial_cash=args.initial_cash)
 
