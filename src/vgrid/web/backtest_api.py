@@ -47,7 +47,9 @@ def _result_to_dict(result: BacktestResult, config: GridConfig) -> dict[str, obj
 
     # 回撤 / 买入持有在全量曲线 / bar 上算，再按降采样索引对齐到 curve 的点（同 state.py 口径）
     dd_full = drawdown_series(full)
-    bh_full = buy_hold_series_from_bars(result.bars, m.initial_cash, config)
+    bh_full = buy_hold_series_from_bars(
+        result.bars, m.initial_cash, fee=config.fee, lot_size=config.lot_size
+    )
     drawdown_curve = [{"ts": full[i].ts.isoformat(), "drawdown": str(dd_full[i])} for i in indices]
     buy_hold_curve = [{"ts": full[i].ts.isoformat(), "equity": str(bh_full[i])} for i in indices]
 

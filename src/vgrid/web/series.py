@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from vgrid.backtest.result import EquityPoint
 from vgrid.core.bar import Bar
-from vgrid.core.config import GridConfig
+from vgrid.core.fees import FeeModel
 from vgrid.core.money import shares_for_amount
 
 
@@ -26,19 +26,20 @@ def drawdown_series(curve: Sequence[EquityPoint]) -> list[Decimal]:
 
 
 def buy_hold_series_from_bars(
-    bars: Sequence[Bar], initial: Decimal, config: GridConfig
+    bars: Sequence[Bar], initial: Decimal, *, fee: FeeModel, lot_size: int
 ) -> list[Decimal]:
     """回测口径的买入持有逐点权益：首根 ``open`` 按手取整建仓，逐根按 ``close`` 估值。
 
-    与 ``metrics._buy_hold`` 的分母口径一致（零头算作闲置资金）；不扣卖出费——卖出费
-    只在真实平仓结算，曲线对照阶段两条线都不扣，才公平。买不起一手则全程持币不变。
+    与 ``metrics.annualized_return`` 的买入持有分母口径一致（零头算作闲置资金）；不扣卖出费——
+    卖出费只在真实平仓结算，曲线对照阶段两条线都不扣，才公平。买不起一手则全程持币不变。
+    网格与定投都复用它，只需传各自的 ``fee`` / ``lot_size``。
     """
     if not bars or initial <= 0:
         return [initial for _ in bars]
     entry = bars[0].open
-    shares = shares_for_amount(initial, entry, config.lot_size)
+    shares = shares_for_amount(initial, entry, lot_size)
     if shares <= 0:
         return [initial for _ in bars]
     buy_notional = entry * shares
-    leftover = initial - (buy_notional + config.fee.compute(buy_notional))
+    leftover = initial - (buy_notional + fee.compute(buy_notional))
     return [leftover + bar.close * shares for bar in bars]

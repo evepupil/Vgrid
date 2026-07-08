@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from vgrid.data.provider import BarProvider
 from vgrid.web.quotes import MootdxSpotProvider, QuoteProvider
 from vgrid.web.routes import backtest as backtest_router
+from vgrid.web.routes import dca as dca_router
 from vgrid.web.routes import etf as etf_router
 from vgrid.web.routes import ladder as ladder_router
 from vgrid.web.routes import market as market_router
@@ -63,6 +64,7 @@ def create_app(
     app.include_router(state_router.router)
     app.include_router(strategies_router.router)
     app.include_router(backtest_router.router)
+    app.include_router(dca_router.router)
     app.include_router(portfolio_router.router)
     app.include_router(etf_router.router)
     app.include_router(ladder_router.router)
