@@ -44,10 +44,10 @@ class _FakeClient:
 
 
 def _patch(monkeypatch: pytest.MonkeyPatch, pages: list[pd.DataFrame]) -> _FakeClient:
-    """monkeypatch Quotes.factory 返回 fake client。"""
+    """monkeypatch 共享连接的 Quotes.factory 返回 fake client。"""
     client = _FakeClient(pages)
     monkeypatch.setattr(
-        "vgrid.data.mootdx_provider.Quotes",
+        "vgrid.data.mootdx_client.Quotes",
         SimpleNamespace(factory=lambda **kw: client),
     )
     return client

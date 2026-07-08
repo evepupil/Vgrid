@@ -21,14 +21,25 @@ from pathlib import Path
 
 from vgrid.core.bar import Bar, BarSeries
 from vgrid.core.enums import Frame
-from vgrid.data.akshare_provider import AkshareProvider
 from vgrid.data.cache import ParquetCache
+from vgrid.data.mootdx_provider import MootdxProvider
 from vgrid.data.provider import BarProvider
+from vgrid.data.tencent_provider import TencentProvider
 
 
 def default_cache_dir() -> Path:
     """默认缓存目录：``~/.vgrid/cache``（用户目录，不污染 repo）。"""
     return Path.home() / ".vgrid" / "cache"
+
+
+def _default_provider(frame: Frame) -> BarProvider:
+    """按周期选默认源：日线走腾讯前复权（跨分红除权无假跳空），分钟走 mootdx（通达信）。
+
+    东财 / 新浪源已弃用（em 海外不通、sina 不复权），现只留这两个稳定源。
+    """
+    if frame is Frame.DAILY:
+        return TencentProvider()  # 前复权日线
+    return MootdxProvider()  # 1m / 5m 分钟线
 
 
 def load_bars(
@@ -43,7 +54,7 @@ def load_bars(
 ) -> BarSeries:
     """取 [start, end] 闭区间 K 线，优先缓存，缺了才下载并增量合并落盘。"""
     cache = ParquetCache(cache_dir or default_cache_dir())
-    prov = provider or AkshareProvider()
+    prov = provider or _default_provider(frame)
 
     cached = _load_cached(cache, symbol, frame)
     if not refresh and _covers(cached, start, end):
