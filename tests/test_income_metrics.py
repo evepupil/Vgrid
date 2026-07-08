@@ -6,8 +6,9 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from vgrid.core.bar import Bar
+from vgrid.core.fees import FeeModel
 from vgrid.income import series
-from vgrid.income.metrics import DataQuality, compute_income_metrics
+from vgrid.income.metrics import DataQuality, IncomeMetrics, compute_income_metrics
 from vgrid.income.models import DividendEvent, ExpenseInfo, NavPoint
 
 _LOT = 100
@@ -30,11 +31,17 @@ def _div(day: tuple[int, int, int], per_share: str) -> DividendEvent:
     return DividendEvent(register_date=d, ex_date=d, pay_date=d, per_share=Decimal(per_share))
 
 
-def _compute(bars, dividends, navs, expenses=_UNKNOWN_EXP, lifetime=None):
+def _compute(
+    bars: list[Bar],
+    dividends: list[DividendEvent],
+    navs: list[NavPoint],
+    expenses: ExpenseInfo = _UNKNOWN_EXP,
+    lifetime: Decimal | None = None,
+) -> IncomeMetrics:
     price_c = series.price_curve(bars)
     cash_c = series.cash_dividend_curve(bars, dividends, initial_cash=_CASH, lot_size=_LOT)
     reinvest_c = series.reinvest_curve(
-        bars, dividends, initial_cash=_CASH, lot_size=_LOT, fee=series.FeeModel(),
+        bars, dividends, initial_cash=_CASH, lot_size=_LOT, fee=FeeModel(),
     )
     accnav_c = series.acc_nav_curve(navs)
     return compute_income_metrics(
