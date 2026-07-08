@@ -42,6 +42,7 @@ class StrategyRow:
     n_trades: int
     invested: Decimal | None = None
     xirr: Decimal | None = None
+    curve: tuple[EquityPoint, ...] = ()  # 逐 K 权益，供 Web 叠加净值曲线（报告层不用）
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +91,8 @@ def _fee_and_lot(
 
 
 def _grid_row(config: GridConfig, bars: BarSeries, initial_cash: Decimal) -> StrategyRow:
-    m = simulate(config, bars, initial_cash=initial_cash).metrics
+    result = simulate(config, bars, initial_cash=initial_cash)
+    m = result.metrics
     return StrategyRow(
         name="网格",
         final_equity=m.final_equity,
@@ -100,12 +102,14 @@ def _grid_row(config: GridConfig, bars: BarSeries, initial_cash: Decimal) -> Str
         max_drawdown=m.max_drawdown,
         total_fee=m.total_fee,
         n_trades=m.n_buys + m.n_sells,
+        curve=result.equity_curve,
     )
 
 
 def _dca_row(config: DcaConfig, bars: BarSeries, initial_cash: Decimal) -> StrategyRow:
     # 用同一笔起始现金，定投自己的 cash_cap 决定实际投入多少
-    m = run_dca(replace(config, initial_cash=initial_cash), bars).metrics
+    result = run_dca(replace(config, initial_cash=initial_cash), bars)
+    m = result.metrics
     total_return = (m.final_equity - initial_cash) / initial_cash
     return StrategyRow(
         name="定投",
@@ -118,6 +122,7 @@ def _dca_row(config: DcaConfig, bars: BarSeries, initial_cash: Decimal) -> Strat
         n_trades=m.n_buys,
         invested=m.invested_amount,
         xirr=m.xirr,
+        curve=result.equity_curve,
     )
 
 
@@ -128,6 +133,10 @@ def _buy_hold_row(
     entry = bars.bars[0].open
     shares = shares_for_amount(initial_cash, entry, lot_size)
     if shares <= 0:  # 买不满一手，全程空仓
+        flat = tuple(
+            EquityPoint(ts=b.ts, cash=initial_cash, position_value=Decimal(0), equity=initial_cash)
+            for b in bars.bars
+        )
         return StrategyRow(
             name="买入持有",
             final_equity=initial_cash,
@@ -137,6 +146,7 @@ def _buy_hold_row(
             max_drawdown=Decimal(0),
             total_fee=Decimal(0),
             n_trades=0,
+            curve=flat,
         )
     buy_notional = entry * shares
     buy_fee = fee.compute(buy_notional)
@@ -161,4 +171,5 @@ def _buy_hold_row(
         max_drawdown=max_drawdown_of(curve),
         total_fee=buy_fee,
         n_trades=1,
+        curve=curve,
     )
