@@ -23,8 +23,7 @@ from vgrid.store.repository import (
     load_fills,
     load_ticks,
     save_config,
-    save_fill,
-    save_tick,
+    save_tick_with_fills,
 )
 from vgrid.strategy.engine import GridEngine
 
@@ -67,13 +66,19 @@ class PaperRunner:
             raise ValueError("DB 已存不同配置，请用同一库或新库")
         if existing is None:
             save_config(conn, config)
+        self.replay()  # 自动断点续跑（review #36）：免得调用方忘调就 process_tick、引擎从中枢重仓与库历史脱节
 
     @property
     def engine(self) -> GridEngine:
         return self._engine
 
     def replay(self) -> None:
-        """读历史 tick 重建 engine 状态（启动时调一次）。无历史则跳过，等首个 tick 再 start。"""
+        """读历史 tick 重建 engine 状态。``__init__`` 已自动调一次；重复调是空操作。
+
+        无历史则跳过，等首个 tick 再 start。
+        """
+        if self._started:
+            return
         ticks = load_ticks(self._conn)
         if not ticks:
             return
@@ -83,20 +88,20 @@ class PaperRunner:
             self._engine.step(price)
 
     def process_tick(self, ts: datetime, price: Decimal) -> list[Fill]:
-        """处理一个 tick：落库 + 喂 engine。
+        """处理一个 tick：喂 engine + 把 tick 和全部成交原子落库。
 
         首个 tick 走 start（零成交），之后 step。返回本次成交（已落库）。
+        落库走 ``save_tick_with_fills``（单事务）——tick + 全部 fills 要么全进、要么全不进，
+        不会出现 tick 进了但 fills 残缺、重启后账本与引擎对不上的情况（review #21）。
         有 Notifier 则把成交信号推出去（切10a：只通知不真下单）；推送失败打日志、
         不中断模拟盘——记账比通知重要，不能因网络抖动停盘。
         """
-        save_tick(self._conn, ts, price)
         if not self._started:
             fills = [replace(f, ts=ts) for f in self._engine.start(price)]
             self._started = True
         else:
             fills = [replace(f, ts=ts) for f in self._engine.step(price)]
-        for f in fills:
-            save_fill(self._conn, f)
+        save_tick_with_fills(self._conn, ts, price, fills)
         if fills and self._notifier is not None:
             try:
                 self._notifier.send(fills, symbol=self._config.symbol)

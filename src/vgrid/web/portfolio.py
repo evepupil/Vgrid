@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from vgrid.store.db import connect
+from vgrid.store.db import apply_pragmas, connect
 from vgrid.web.curve import downsample
 from vgrid.web.state import StateView, load_state
 
@@ -151,6 +151,7 @@ class PortfolioManager:
         self._data_dir.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(self._db_path)
         conn.executescript(_WATCH_SCHEMA)
+        apply_pragmas(conn)  # WAL + busy_timeout，和 paper DB 同口径（review #31）
         return conn
 
 

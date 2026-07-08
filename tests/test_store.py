@@ -1,7 +1,10 @@
 """SQLite 存取测试（内存库）。"""
 
+import sqlite3
 from datetime import datetime
 from decimal import Decimal
+
+import pytest
 
 from vgrid.core import GridConfig
 from vgrid.core.enums import Side
@@ -14,6 +17,7 @@ from vgrid.store import (
     save_config,
     save_fill,
     save_tick,
+    save_tick_with_fills,
 )
 
 
@@ -50,14 +54,15 @@ def test_config_upsert_replaces() -> None:
     assert load_config(conn) == other
 
 
-def test_tick_roundtrip_and_order() -> None:
+def test_tick_roundtrip_preserves_arrival_order() -> None:
+    """按 seq（到达顺序）回放，不按 ts 排序——时钟回拨也不会乱序（review #22）。"""
     conn = connect()
     save_tick(conn, datetime(2024, 1, 2, 9, 31), Decimal("1.005"))
-    save_tick(conn, datetime(2024, 1, 2, 9, 30), Decimal("1.000"))  # 乱序插入
+    save_tick(conn, datetime(2024, 1, 2, 9, 30), Decimal("1.000"))  # ts 更早但后到
     ticks = load_ticks(conn)
     assert ticks == [
-        (datetime(2024, 1, 2, 9, 30), Decimal("1.000")),
         (datetime(2024, 1, 2, 9, 31), Decimal("1.005")),
+        (datetime(2024, 1, 2, 9, 30), Decimal("1.000")),
     ]
 
 
@@ -67,13 +72,41 @@ def test_tick_decimal_precision_preserved() -> None:
     assert load_ticks(conn)[0][1] == Decimal("1.0573")
 
 
-def test_tick_same_ts_replaces() -> None:
+def test_tick_same_ts_keeps_both() -> None:
+    """同 ts 不再覆盖——seq 自增主键，两笔都保留（review #22）。"""
     conn = connect()
     ts = datetime(2024, 1, 2, 9, 30)
     save_tick(conn, ts, Decimal("1.000"))
-    save_tick(conn, ts, Decimal("1.005"))  # 同 ts 覆盖
+    save_tick(conn, ts, Decimal("1.005"))
+    ticks = load_ticks(conn)
+    assert len(ticks) == 2
+    assert [t[1] for t in ticks] == [Decimal("1.000"), Decimal("1.005")]
+
+
+def test_save_tick_with_fills_atomic() -> None:
+    """tick + fills 单事务：全进或全不进（review #21）。"""
+    conn = connect()
+    ts = datetime(2024, 1, 2, 9, 30)
+    fills = [
+        Fill(Side.BUY, Decimal("1.00"), 100, Decimal("0.10"), 2, ts=ts),
+        Fill(
+            Side.SELL, Decimal("1.10"), 100, Decimal("0.10"), 3, ts=ts,
+            realized_pnl=Decimal("9.80"),
+        ),
+    ]
+    save_tick_with_fills(conn, ts, Decimal("1.005"), fills)
     assert len(load_ticks(conn)) == 1
-    assert load_ticks(conn)[0][1] == Decimal("1.005")
+    assert len(load_fills(conn)) == 2
+
+
+def test_fill_unique_rejects_duplicate() -> None:
+    """同一 (ts,side,price,shares,level_index) 重复插入被 UNIQUE 挡下（review #35）。"""
+    conn = connect()
+    ts = datetime(2024, 1, 2, 9, 30)
+    f = Fill(Side.BUY, Decimal("1.00"), 100, Decimal("0.10"), 2, ts=ts)
+    save_fill(conn, f)
+    with pytest.raises(sqlite3.IntegrityError):
+        save_fill(conn, f)
 
 
 def test_fill_roundtrip_with_pnl() -> None:

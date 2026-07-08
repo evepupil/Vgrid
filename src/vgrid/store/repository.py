@@ -30,21 +30,45 @@ def load_config(conn: sqlite3.Connection) -> GridConfig | None:
 
 
 def save_tick(conn: sqlite3.Connection, ts: datetime, price: Decimal) -> None:
-    """同 ts 覆盖（INSERT OR REPLACE）。"""
+    """追加一条 tick（seq 自增主键，同 ts 不再覆盖——见 db.py 的说明）。"""
     conn.execute(
-        "INSERT OR REPLACE INTO tick(ts, price) VALUES (?, ?)",
+        "INSERT INTO tick(ts, price) VALUES (?, ?)",
         (ts.isoformat(), str(price)),
     )
     conn.commit()
 
 
+def save_tick_with_fills(
+    conn: sqlite3.Connection, ts: datetime, price: Decimal, fills: list[Fill]
+) -> None:
+    """一个 tick + 它触发的全部 fills 包进单事务、末尾一次 commit（review #21）。
+
+    半写会让 fills 表与引擎状态发散：tick 进去了但 fills 只进了一部分，重启 replay 用
+    tick 重建引擎（状态对），但 fills 表缺行 → ``snapshot.n_fills`` 与 ``sum(realized_pnl)``
+    和引擎内存对不上。单事务保证要么全进、要么全不进。
+    """
+    with conn:  # 退出时 commit；中途异常自动 rollback
+        conn.execute(
+            "INSERT INTO tick(ts, price) VALUES (?, ?)",
+            (ts.isoformat(), str(price)),
+        )
+        for f in fills:
+            _insert_fill(conn, f)
+
+
 def load_ticks(conn: sqlite3.Connection) -> list[tuple[datetime, Decimal]]:
-    """按 ts 升序返回全部 tick。"""
-    rows = conn.execute("SELECT ts, price FROM tick ORDER BY ts").fetchall()
+    """按 seq（到达顺序）升序返回全部 tick——replay 必须按原跑顺序回放（review #22）。"""
+    rows = conn.execute("SELECT ts, price FROM tick ORDER BY seq").fetchall()
     return [(datetime.fromisoformat(r[0]), Decimal(r[1])) for r in rows]
 
 
 def save_fill(conn: sqlite3.Connection, fill: Fill) -> None:
+    """追加一笔成交（UNIQUE 自然键防重复——review #35）。"""
+    _insert_fill(conn, fill)
+    conn.commit()
+
+
+def _insert_fill(conn: sqlite3.Connection, fill: Fill) -> None:
     conn.execute(
         "INSERT INTO fill(ts, side, price, shares, fee, level_index, realized_pnl)"
         " VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -58,7 +82,6 @@ def save_fill(conn: sqlite3.Connection, fill: Fill) -> None:
             str(fill.realized_pnl) if fill.realized_pnl is not None else None,
         ),
     )
-    conn.commit()
 
 
 def load_fills(conn: sqlite3.Connection) -> list[Fill]:
