@@ -5,11 +5,17 @@ from __future__ import annotations
 import math
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Any, cast
 
 from vgrid.core.bar import Bar, BarSeries
 from vgrid.core.enums import Frame
 from vgrid.scan import ScanSpec
+from vgrid.scan.runner import Metric
 from vgrid.web.scan_api import run_scan_api
+
+
+def _run_scan_api(metric: Metric, top: int) -> dict[str, Any]:
+    return cast(dict[str, Any], run_scan_api(_spec(), _bars(), metric=metric, top=top))
 
 
 def _bars(n: int = 80) -> BarSeries:
@@ -46,7 +52,7 @@ def _spec() -> ScanSpec:
 
 
 def test_scan_structure() -> None:
-    d = run_scan_api(_spec(), _bars(), metric="sharpe", top=10)
+    d = _run_scan_api(metric="sharpe", top=10)
     assert d["metric"] == "sharpe"
     assert d["total"] == 3  # 3 个格数
     assert d["shown"] == 3
@@ -56,7 +62,7 @@ def test_scan_structure() -> None:
 
 
 def test_scan_row_serialisation() -> None:
-    row = run_scan_api(_spec(), _bars(), metric="sharpe", top=1)["rows"][0]
+    row = _run_scan_api(metric="sharpe", top=1)["rows"][0]
     assert set(row["params"]) == {"grid_count"}
     assert isinstance(row["params"]["grid_count"], int)
     m = row["metrics"]
@@ -66,13 +72,13 @@ def test_scan_row_serialisation() -> None:
 
 
 def test_scan_sorted_desc_by_metric() -> None:
-    d = run_scan_api(_spec(), _bars(), metric="total_return", top=10)
+    d = _run_scan_api(metric="total_return", top=10)
     returns = [Decimal(r["metrics"]["total_return"]) for r in d["rows"]]
     assert returns == sorted(returns, reverse=True)
 
 
 def test_scan_top_clamps() -> None:
-    d = run_scan_api(_spec(), _bars(), metric="sharpe", top=2)
+    d = _run_scan_api(metric="sharpe", top=2)
     assert d["total"] == 3  # 扫了 3 组
     assert d["shown"] == 2  # 只回前 2
     assert len(d["rows"]) == 2

@@ -17,10 +17,22 @@ class StubProvider:
 
     def fetch_many(self, symbols: list[str]) -> list[Quote]:
         table = {
-            "159920": Quote("159920", "恒生 ETF", Decimal("1.246"), Decimal("1.229"),
-                            Decimal("0.017"), Decimal("1.38")),
-            "513100": Quote("513100", "纳指 ETF", Decimal("1.512"), Decimal("1.519"),
-                            Decimal("-0.007"), Decimal("-0.46")),
+            "159920": Quote(
+                "159920",
+                "恒生 ETF",
+                Decimal("1.246"),
+                Decimal("1.229"),
+                Decimal("0.017"),
+                Decimal("1.38"),
+            ),
+            "513100": Quote(
+                "513100",
+                "纳指 ETF",
+                Decimal("1.512"),
+                Decimal("1.519"),
+                Decimal("-0.007"),
+                Decimal("-0.46"),
+            ),
         }
         return [table[s] for s in symbols if s in table]
 

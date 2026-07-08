@@ -46,9 +46,7 @@ class MootdxConnection:
         """取一个市场的证券列表（代码 / 名称，0=深 1=沪）。"""
         return self._call(lambda c: c.stocks(market=market))
 
-    def _call(
-        self, fn: Callable[[MootdxClient], pd.DataFrame | None]
-    ) -> pd.DataFrame | None:
+    def _call(self, fn: Callable[[MootdxClient], pd.DataFrame | None]) -> pd.DataFrame | None:
         for attempt in range(2):
             try:
                 return fn(self._get())

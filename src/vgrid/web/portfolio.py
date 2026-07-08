@@ -69,9 +69,7 @@ class WatchItem:
 class PortfolioManager:
     """组合管理：扫 paper DB 聚合 + 关注列表 CRUD。"""
 
-    def __init__(
-        self, data_dir: Path, *, mode: str = "sim", paper_dir: Path | None = None
-    ) -> None:
+    def __init__(self, data_dir: Path, *, mode: str = "sim", paper_dir: Path | None = None) -> None:
         if mode not in ("live", "sim"):
             raise ValueError(f"mode 必须是 live 或 sim，收到：{mode}")
         self._data_dir = data_dir

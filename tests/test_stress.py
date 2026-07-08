@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from vgrid.analysis.stress import black_swan_report
+from vgrid.analysis.stress import StressReport, black_swan_report
 
 
-def _report(**kw: object) -> object:
-    base = {
+def _report(**kw: Decimal) -> StressReport:
+    base: dict[str, Decimal] = {
         "current_price": Decimal("1.10"),
         "position_value": Decimal("10000"),
         "unrealized": Decimal("200"),
@@ -19,7 +19,16 @@ def _report(**kw: object) -> object:
         "down_amount_factor": Decimal("1"),
     }
     base.update(kw)
-    return black_swan_report(**base)  # type: ignore[arg-type]
+    return black_swan_report(
+        current_price=base["current_price"],
+        position_value=base["position_value"],
+        unrealized=base["unrealized"],
+        committed=base["committed"],
+        capital_cap=base["capital_cap"],
+        lower_price=base["lower_price"],
+        down_spacing_factor=base["down_spacing_factor"],
+        down_amount_factor=base["down_amount_factor"],
+    )
 
 
 def test_occupancy_ratio_and_buffer() -> None:

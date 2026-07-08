@@ -106,9 +106,7 @@ def test_invalid_mode_rejected(tmp_path: Path) -> None:
     assert r.status_code == 422
 
 
-def test_add_watch_unknown_symbol_404(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_add_watch_unknown_symbol_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """代码不在 ETF 列表 → 404，不写库。"""
     monkeypatch.setattr("vgrid.web.routes.portfolio.symbol_exists", lambda s: False)
     client = _client(tmp_path)

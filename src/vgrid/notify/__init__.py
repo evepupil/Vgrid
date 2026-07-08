@@ -29,9 +29,7 @@ def make_notifier(channel: str) -> Notifier:
     if channel == "serverchan":
         key = os.environ.get("SERVERCHAN_SENDKEY")
         if not key:
-            raise ValueError(
-                "推送缺凭证：设环境变量 SERVERCHAN_SENDKEY（sct.ftqq.com 的 SendKey）"
-            )
+            raise ValueError("推送缺凭证：设环境变量 SERVERCHAN_SENDKEY（sct.ftqq.com 的 SendKey）")
         return ServerChanNotifier(key)
     if channel == "pushplus":
         token = os.environ.get("PUSHPLUS_TOKEN")
