@@ -1,11 +1,14 @@
-"""vgrid 命令行：回测 / 取数。
+"""vgrid 命令行：回测 / 取数 / 扫描 / 定投 / 模拟盘。
 
-两个子命令：
+子命令：
 - ``vgrid fetch``    只下载行情并写入本地缓存（预热 / 调试）。
 - ``vgrid backtest`` 下载行情 → 跑网格回测 → 终端摘要 + Markdown 报告。
+- ``vgrid dca``      下载行情 → 跑量化定投回测 → 终端摘要 + Markdown 报告。
+- ``vgrid scan``     网格搜索参数扫描。
+- ``vgrid paper``    模拟盘（run / status / serve）。
 
-策略参数走 ``--config <cfg.json>``（GridConfig 的 to_dict 格式）；数据区间、标的、
-周期走命令行参数。
+策略参数走 ``--config <cfg.json>``（网格是 GridConfig、定投是 DcaConfig 的 to_dict 格式）；
+数据区间、标的、周期走命令行参数。
 """
 
 from __future__ import annotations
@@ -23,9 +26,10 @@ from vgrid.backtest import simulate
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
+from vgrid.dca import DcaConfig, run_dca
 from vgrid.notify import make_notifier
 from vgrid.paper import MootdxRealtimeProvider, PaperRunner
-from vgrid.report import render_report, render_summary
+from vgrid.report import render_dca_report, render_dca_summary, render_report, render_summary
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
 from vgrid.web import create_app
@@ -40,17 +44,23 @@ def main(argv: list[str] | None = None) -> int:
     """命令行入口。"""
     parser = _build_parser()
     args = parser.parse_args(argv)
-    if args.command == "fetch":
-        return _guard(_cmd_fetch, args)
-    if args.command == "scan":
-        return _guard(_cmd_scan, args)
     if args.command == "paper":
-        if args.paper_command == "run":
-            return _cmd_paper_run(args)
-        if args.paper_command == "serve":
-            return _cmd_paper_serve(args)
-        return _cmd_paper_status(args)
-    return _guard(_cmd_backtest, args)
+        return _cmd_paper(args)  # paper 各子命令自带长驻 / 异常处理，不走 _guard
+    handlers: dict[str, Callable[[argparse.Namespace], int]] = {
+        "fetch": _cmd_fetch,
+        "dca": _cmd_dca,
+        "scan": _cmd_scan,
+        "backtest": _cmd_backtest,
+    }
+    return _guard(handlers[args.command], args)
+
+
+def _cmd_paper(args: argparse.Namespace) -> int:
+    if args.paper_command == "run":
+        return _cmd_paper_run(args)
+    if args.paper_command == "serve":
+        return _cmd_paper_serve(args)
+    return _cmd_paper_status(args)
 
 
 def _guard(fn: Callable[[argparse.Namespace], int], args: argparse.Namespace) -> int:
@@ -79,6 +89,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="初始资金（默认用配置的 capital_cap）",
     )
+
+    p_dca = sub.add_parser("dca", help="下载行情 → 跑定投回测 → 输出报告")
+    _add_data_args(p_dca)
+    p_dca.add_argument("--config", type=Path, required=True, help="定投配置 JSON（DcaConfig）")
+    p_dca.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
 
     p_scan = sub.add_parser("scan", help="网格搜索参数扫描")
     _add_data_args(p_scan)
@@ -169,6 +184,21 @@ def _cmd_backtest(args: argparse.Namespace) -> int:
     result = simulate(config, series, initial_cash=args.initial_cash)
     print(render_summary(result, config))
     out_path = _write_report(render_report(result, config), args.out, args.symbol, args.frame)
+    print(f"\n完整报告：{out_path}")
+    return 0
+
+
+def _cmd_dca(args: argparse.Namespace) -> int:
+    frame = Frame(args.frame)
+    config = DcaConfig.from_dict(_load_json(args.config))
+    series = load_bars(args.symbol, args.start, args.end, frame, refresh=args.refresh)
+    if not series.bars:
+        print(f"{args.symbol} 在 {args.start} ~ {args.end} 无数据，无法回测")
+        return 1
+    result = run_dca(config, series)
+    print(render_dca_summary(result, config))
+    report = render_dca_report(result, config)
+    out_path = _write_report(report, args.out, f"{args.symbol}_dca", args.frame)
     print(f"\n完整报告：{out_path}")
     return 0
 
