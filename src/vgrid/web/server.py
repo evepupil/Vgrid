@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 
 from vgrid.data.provider import BarProvider
-from vgrid.web.quotes import AkshareSpotProvider, QuoteProvider
+from vgrid.web.quotes import MootdxSpotProvider, QuoteProvider
 from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import etf as etf_router
 from vgrid.web.routes import ladder as ladder_router
@@ -48,16 +48,16 @@ def create_app(
         data_dir: 用户数据目录（存 portfolio.sqlite + paper/ 实例 DB，默认 ``~/.vgrid``）。
         frontend_dist: 前端构建产物目录。传 ``frontend/dist`` 则后端 serve SPA
             （文件存在返文件、否则回退 index.html）；不传则回退旧 HTML 面板。
-        quote_provider: 实时报价源，默认 ``AkshareSpotProvider``。测试 / 离线可注入 stub。
+        quote_provider: 实时报价源，默认 ``MootdxSpotProvider``（通达信）。测试 / 离线可注入 stub。
         bar_provider: 历史日线源（关注列表网格适配评分用），默认 ``None`` 走
-            ``load_bars`` 的 akshare 默认源。测试 / 离线可注入 stub。
+            ``load_bars`` 的默认源（日线腾讯前复权）。测试 / 离线可注入 stub。
         cache_dir: 历史行情缓存目录，默认 ``None`` 走 ``~/.vgrid/cache``。测试可指临时目录。
     """
     app = FastAPI(title="vgrid console")
     app.state.default_db = default_db
     app.state.strategies_dir = strategies_dir or _DEFAULT_STRATEGIES_DIR
     app.state.data_dir = data_dir or _DEFAULT_DATA_DIR
-    app.state.quote_provider = quote_provider or AkshareSpotProvider()
+    app.state.quote_provider = quote_provider or MootdxSpotProvider()
     app.state.bar_provider = bar_provider
     app.state.cache_dir = cache_dir
     app.include_router(state_router.router)

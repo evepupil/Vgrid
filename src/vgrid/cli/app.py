@@ -24,7 +24,7 @@ from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
 from vgrid.notify import make_notifier
-from vgrid.paper import AkshareRealtimeProvider, PaperRunner
+from vgrid.paper import MootdxRealtimeProvider, PaperRunner
 from vgrid.report import render_report, render_summary
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
@@ -232,7 +232,7 @@ def _cmd_paper_run(args: argparse.Namespace) -> int:
             return 1
     conn = connect(str(db))
     runner = PaperRunner(
-        config, AkshareRealtimeProvider(), conn, interval=args.interval, notifier=notifier
+        config, MootdxRealtimeProvider(), conn, interval=args.interval, notifier=notifier
     )
     print(f"模拟盘启动 · {args.symbol}（库 {db}，轮询 {args.interval}s）")
     if notifier is not None:
@@ -258,7 +258,7 @@ def _cmd_paper_status(args: argparse.Namespace) -> int:
         print(f"库 {db} 无模拟盘数据，先 paper run")
         conn.close()
         return 1
-    runner = PaperRunner(config, AkshareRealtimeProvider(), conn)
+    runner = PaperRunner(config, MootdxRealtimeProvider(), conn)
     runner.replay()
     snap = runner.snapshot()
     print(f"模拟盘状态 · {config.symbol}（库 {db}）")

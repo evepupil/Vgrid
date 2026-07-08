@@ -1,23 +1,31 @@
-"""ETF 名称查询：akshare ``fund_etf_spot_em`` 全量拉取 + 内存缓存（TTL 12h）。
+"""ETF 名称查询：通达信 ``stocks()`` 全市场列表 + 内存缓存（TTL 12h）。
 
-首次查拉全量 ETF（代码→名称）缓存，后续查内存。全量约几百只，首次 2~3 秒，
-之后 12 小时内走缓存。关注列表输入代码时用它自动填名称。
+首次查拉沪深全市场证券（代码→名称）缓存，后续查内存。东财现货表
+（``fund_etf_spot_em``）海外常年超时，换成通达信协议（稳定不限 IP）。全市场比只拉 ETF
+现货表重（沪 + 深各几千只），故缓存 12 小时；关注列表输入代码时用它自动填名称。
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Protocol
 
-import akshare as ak
-import pandas as pd
+from vgrid.data.mootdx_quotes import MootdxQuotes
 
 _CACHE_TTL = timedelta(hours=12)
+
+
+class NameSource(Protocol):
+    """代码→名称 数据源（默认 mootdx，测试可注入 fake）。"""
+
+    def names(self) -> dict[str, str]: ...
 
 
 class EtfInfoCache:
     """代码→名称 内存缓存，首次查拉全量。"""
 
-    def __init__(self) -> None:
+    def __init__(self, quotes: NameSource | None = None) -> None:
+        self._quotes: NameSource = quotes or MootdxQuotes()
         self._cache: dict[str, str] = {}
         self._ts: datetime | None = None
 
@@ -33,12 +41,10 @@ class EtfInfoCache:
     def _ensure(self) -> None:
         if self._ts is not None and datetime.now() - self._ts < _CACHE_TTL:
             return
-        df: pd.DataFrame = ak.fund_etf_spot_em()
-        cache: dict[str, str] = {}
-        for code, name in zip(df["代码"], df["名称"], strict=True):
-            cache[str(code)] = str(name)
-        self._cache = cache
-        self._ts = datetime.now()
+        names = self._quotes.names()
+        if names:  # 拉空（连接失败）不刷缓存，留着下次重试
+            self._cache = names
+            self._ts = datetime.now()
 
 
 _cache = EtfInfoCache()

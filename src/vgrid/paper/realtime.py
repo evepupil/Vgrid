@@ -1,8 +1,8 @@
-"""实时行情 provider。
+"""实时行情 provider（模拟盘盘中轮询取现价）。
 
-``RealtimeProvider`` 是协议；``AkshareRealtimeProvider`` 是 akshare 实现。真实接口名 / 列名
-待代理通后实测确认，先按 ``fund_etf_spot_em`` 全量按 symbol 过滤实现（适配集中在本文件，
-和 data 层 akshare provider 同思路）。
+``RealtimeProvider`` 是协议；``MootdxRealtimeProvider`` 是通达信实现——走
+``data.mootdx_quotes`` 的共享连接按 symbol 取现价。东财现货表（``fund_etf_spot_em``）
+海外常年超时，已全面换成通达信协议（稳定不限 IP）。
 """
 
 from __future__ import annotations
@@ -10,6 +10,8 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from typing import Protocol, runtime_checkable
+
+from vgrid.data.mootdx_quotes import MootdxQuotes
 
 
 @runtime_checkable
@@ -19,15 +21,14 @@ class RealtimeProvider(Protocol):
     def fetch(self, symbol: str) -> tuple[datetime, Decimal]: ...
 
 
-class AkshareRealtimeProvider:
-    """akshare ETF 实时行情（东方财富实时盘，按 symbol 过滤）。"""
+class MootdxRealtimeProvider:
+    """通达信实时行情（按 symbol 取现价，连接复用）。"""
+
+    def __init__(self) -> None:
+        self._quotes = MootdxQuotes()
 
     def fetch(self, symbol: str) -> tuple[datetime, Decimal]:
-        import akshare as ak  # noqa: PLC0415  懒导入，避免模块加载依赖网络 / akshare
-
-        df = ak.fund_etf_spot_em()
-        row = df[df["代码"] == symbol]
-        if row.empty:
+        snaps = self._quotes.snapshot([symbol])
+        if not snaps:
             raise ValueError(f"实时行情找不到标的：{symbol}")
-        price = Decimal(str(row.iloc[0]["最新价"]))
-        return datetime.now(), price
+        return datetime.now(), snaps[0].price

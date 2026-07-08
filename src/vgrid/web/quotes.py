@@ -1,17 +1,19 @@
 """实时报价：批量取多标的现价 + 昨收 + 涨跌（FR-11.1 / 11.4）。
 
-``QuoteProvider`` 是协议，``AkshareSpotProvider`` 是 akshare 实现——拉一次全量 ETF
-现货表（``fund_etf_spot_em``）再按代码批量提取，昨收缺失则由涨跌幅反推。列名随
-akshare 版本会变，适配集中在本文件；取不到的标的跳过，整体失败由调用方降级。
+``QuoteProvider`` 是协议，``MootdxSpotProvider`` 是通达信实现——走 ``data.mootdx_quotes``
+的共享连接批量取现价 / 昨收，昨收缺则涨跌置空。取不到的标的跳过，整体失败由调用方降级。
 
-后端只回原始数值 + 昨收，红涨绿跌的颜色由前端定（见需求原则 4）。
+后端只回原始数值 + 昨收，红涨绿跌的颜色由前端定（见需求原则 4）。名称不在报价里给
+（通达信报价无名称字段），由 ``/api/etf/{code}/info`` 单独查，前端 ticker 缺名回落代码。
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Protocol, runtime_checkable
+
+from vgrid.data.mootdx_quotes import MootdxQuotes, Snapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,63 +35,29 @@ class QuoteProvider(Protocol):
     def fetch_many(self, symbols: list[str]) -> list[Quote]: ...
 
 
-class AkshareSpotProvider:
-    """akshare ETF 全量现货表，按代码批量提取。"""
+class MootdxSpotProvider:
+    """通达信实时报价，按代码批量提取（连接复用）。"""
+
+    def __init__(self) -> None:
+        self._quotes = MootdxQuotes()
 
     def fetch_many(self, symbols: list[str]) -> list[Quote]:
-        import akshare as ak  # noqa: PLC0415  懒导入，避免模块加载依赖网络 / akshare
-
-        df = ak.fund_etf_spot_em()
-        wanted = set(symbols)
-        by_code: dict[str, Quote] = {}
-        for _, row in df[df["代码"].isin(wanted)].iterrows():
-            code = str(row["代码"])
-            by_code[code] = _row_to_quote(code, dict(row))
-        # 保持请求顺序
-        return [by_code[s] for s in symbols if s in by_code]
+        return [_snapshot_to_quote(s) for s in self._quotes.snapshot(symbols)]
 
 
-def _row_to_quote(code: str, row: dict[str, object]) -> Quote:
-    """现货表一行 → Quote，昨收 / 涨跌互相补齐。"""
-    price = _dec(row.get("最新价"))
-    if price is None:
-        # 没有现价的行无意义，用 0 占位（调用方会拿到，但前端可判 price<=0 跳过）
-        price = Decimal(0)
-    prev_close = _dec(row.get("昨收"))
-    change = _dec(row.get("涨跌额"))
-    change_pct = _dec(row.get("涨跌幅"))
-    name_raw = row.get("名称")
-    name = str(name_raw) if name_raw is not None else None
-
-    # 昨收缺 → 由涨跌幅反推
-    if prev_close is None and change_pct is not None and price > 0:
-        denom = Decimal(1) + change_pct / Decimal(100)
-        if denom != 0:
-            prev_close = price / denom
-    # 涨跌额 / 涨跌幅 缺 → 由昨收补
-    if prev_close is not None and prev_close != 0:
-        if change is None:
-            change = price - prev_close
-        if change_pct is None:
-            change_pct = (price - prev_close) / prev_close * Decimal(100)
-
+def _snapshot_to_quote(s: Snapshot) -> Quote:
+    """通达信快照 → Quote，涨跌由现价 / 昨收算（昨收缺则置空）。"""
+    prev = s.last_close
+    change = None if prev is None else s.price - prev
+    change_pct = None if prev is None or prev == 0 else (s.price - prev) / prev * Decimal(100)
     return Quote(
-        symbol=code,
-        name=name,
-        price=price,
-        prev_close=prev_close,
+        symbol=s.code,
+        name=None,
+        price=s.price,
+        prev_close=prev,
         change=change,
         change_pct=change_pct,
     )
-
-
-def _dec(v: object) -> Decimal | None:
-    if v is None:
-        return None
-    try:
-        return Decimal(str(v))
-    except (InvalidOperation, ValueError, TypeError):
-        return None
 
 
 def quote_to_dict(q: Quote) -> dict[str, object]:
