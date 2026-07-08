@@ -6,6 +6,7 @@
 - ``vgrid dca``      下载行情 → 跑量化定投回测 → 终端摘要 + Markdown 报告。
 - ``vgrid compare``  网格 / 定投 / 买入持有 同区间、同起始现金对比。
 - ``vgrid scan``     网格搜索参数扫描。
+- ``vgrid income``   红利 ETF 分红收益对比（compare：批量比分红 / 走势 / 费用）。
 - ``vgrid paper``    模拟盘（run / status / serve）。
 
 策略参数走 ``--config <cfg.json>``（网格是 GridConfig、定投是 DcaConfig 的 to_dict 格式）；
@@ -29,6 +30,9 @@ from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
 from vgrid.dca import DcaConfig, run_dca
+from vgrid.income.report import DEFAULT_SORT
+from vgrid.income.service import IncomeCompareSpec, build_comparison
+from vgrid.income.universe import DEFAULT_KEYWORDS
 from vgrid.notify import make_notifier
 from vgrid.paper import MootdxRealtimeProvider, PaperRunner
 from vgrid.report import (
@@ -38,6 +42,11 @@ from vgrid.report import (
     render_dca_summary,
     render_report,
     render_summary,
+)
+from vgrid.report.income import (
+    render_income_csv,
+    render_income_report,
+    render_income_summary,
 )
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
@@ -61,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         "compare": _cmd_compare,
         "scan": _cmd_scan,
         "backtest": _cmd_backtest,
+        "income": _cmd_income,
     }
     return _guard(handlers[args.command], args)
 
@@ -135,6 +145,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="初始资金（默认用配置的 capital_cap）",
     )
 
+    _add_income_parser(sub)
+
     p_paper = sub.add_parser("paper", help="模拟盘（实时轮询 + 虚拟账户）")
     paper_sub = p_paper.add_subparsers(dest="paper_command", required=True)
 
@@ -164,6 +176,23 @@ def _build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", default="127.0.0.1", help="监听地址")
     p_serve.add_argument("--port", type=int, default=8000, help="监听端口")
     return parser
+
+
+def _add_income_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    p_income = sub.add_parser("income", help="红利 ETF 分红收益对比")
+    income_sub = p_income.add_subparsers(dest="income_command", required=True)
+    p = income_sub.add_parser("compare", help="批量比较红利 ETF 的分红 / 走势 / 费用")
+    p.add_argument("--start", type=_parse_date, required=True, help="起始日期 YYYY-MM-DD")
+    p.add_argument("--end", type=_parse_date, required=True, help="结束日期 YYYY-MM-DD")
+    p.add_argument("--keywords", default=None, help="池筛选关键词，逗号分隔（默认红利相关词）")
+    p.add_argument("--symbols", default=None, help="指定 ETF 代码，逗号分隔（跳过关键词筛选）")
+    p.add_argument(
+        "--initial-cash", type=Decimal, default=Decimal("100000"), help="满仓建仓起始现金",
+    )
+    p.add_argument("--lot-size", type=int, default=100, help="每手份额（ETF 默认 100）")
+    p.add_argument("--sort", default=None, help="排序键，逗号分隔（默认再投年化优先）")
+    p.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+    p.add_argument("--format", default="markdown,csv", help="输出格式，逗号分隔：markdown,csv")
 
 
 def _add_data_args(p: argparse.ArgumentParser) -> None:
@@ -289,6 +318,50 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     )
     print(f"\n扫描报告：{scan_path}")
     print(f"最优组合完整报告：{best_path}")
+    return 0
+
+
+def _cmd_income(args: argparse.Namespace) -> int:
+    if args.income_command == "compare":
+        return _cmd_income_compare(args)
+    print(f"未知 income 子命令：{args.income_command}", file=sys.stderr)
+    return 1
+
+
+def _split(text: str | None) -> tuple[str, ...]:
+    return tuple(s.strip() for s in text.split(",") if s.strip()) if text else ()
+
+
+def _cmd_income_compare(args: argparse.Namespace) -> int:
+    spec = IncomeCompareSpec(
+        start=args.start,
+        end=args.end,
+        keywords=_split(args.keywords) or DEFAULT_KEYWORDS,
+        symbols=_split(args.symbols),
+        initial_cash=args.initial_cash,
+        lot_size=args.lot_size,
+        sort_keys=_split(args.sort) or DEFAULT_SORT,
+    )
+
+    def _progress(done: int, total: int, code: str) -> None:
+        print(f"  [{done}/{total}] {code}…", file=sys.stderr)
+
+    run = build_comparison(spec, on_progress=_progress)
+    if not run.comparison.results:
+        print("池内没有可用数据的红利 ETF（都无日线或未命中关键词）", file=sys.stderr)
+        return 1
+
+    print(render_income_summary(run))
+    formats = _split(args.format)
+    args.out.mkdir(parents=True, exist_ok=True)
+    if "markdown" in formats:
+        md_path = args.out / "income_compare.md"
+        md_path.write_text(render_income_report(run), encoding="utf-8")
+        print(f"\nMarkdown 报告：{md_path}")
+    if "csv" in formats:
+        csv_path = args.out / "income_compare.csv"
+        csv_path.write_text(render_income_csv(run), encoding="utf-8")
+        print(f"CSV 报告：{csv_path}")
     return 0
 
 

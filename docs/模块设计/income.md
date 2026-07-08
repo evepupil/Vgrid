@@ -1,0 +1,95 @@
+# 模块：income（红利 ETF 分红收益对比 · M7）
+
+> 目标：不看代码就能看懂这块怎么实现。需求基准见 `docs/需求/红利ETF分红收益对比需求.md`。
+
+## ① 设计
+
+**职责**：把一批红利 ETF 的分红、价格走势、累计净值和费用放进同一份**离线对比报告**，
+判断谁更适合长期持有 / 定投 / 网格。第一版只出 CLI + Markdown / CSV，不接模拟盘 / 实盘 / 前端。
+
+**分层**（同全项目铁律）：
+- **纯逻辑（离线可测）**：`series`（四条曲线）、`metrics`（指标 + 数据质量）、`report`（结果模型 + 编排 + 排名）、
+  `universe`（池筛选）、`dividends` / `nav` 的**解析器**。
+- **I/O（可注入）**：`dividends` / `nav` / `expenses` 的**抓取器**（东财 akshare）、`service` 的编排端口。
+
+**关键决策**：
+1. **四条曲线都起点归零**，直接可比可画：价格 / 价格+现金分红 / 价格+分红再投 / 累计净值。
+   前三条以 `initial_cash` 满仓建仓为基准；累计净值是「含历史分红」的**校验基准**，再投与它差异
+   过大时报 warning。
+2. **分红再投不看未来**：发放日收现金，**下一交易日开盘**才按 `floor(现金/开盘/lot)·lot` 买回，
+   扣银河费，买不满一手留现金——和网格 / 定投一个口径。
+3. **费用只展示、不重复扣**：管理费 / 托管费 / 销售服务费基金每日从资产计提，公布的净值与场内价
+   已内含，故真实价格 / 净值口径下不再扣一遍。第一版无可用 ETF 费率源，一律 `unknown`。
+4. **要不复权价**：叠加分红必须用未复权收盘价，故日线走 `load_bars(..., adjust="")`（腾讯不复权），
+   缓存与前复权分文件（`data` 层 `adjust` 维度）。
+
+## ② 文件结构
+
+| 文件 | 内容 | 层 |
+|---|---|---|
+| `models.py` | `DividendEvent` / `NavPoint` / `ExpenseInfo` 共享值对象 | 纯 |
+| `series.py` | 四条起点归零收益曲线（`SeriesPoint`） | 纯 |
+| `metrics.py` | `IncomeMetrics` + `DataQuality` + 指标 / 数据质量计算 | 纯 |
+| `report.py` | `EtfIncomeResult` / `IncomeComparison` + `build_etf_result` 编排 + `rank_etfs` | 纯 |
+| `universe.py` | `filter_dividend_etfs`：按关键词从名录筛红利 ETF | 纯 |
+| `dividends.py` | 东财 `fund_open_fund_info_em(分红送配详情)` 抓取 + 解析 | I/O + 纯 |
+| `nav.py` | 东财 `fund_etf_fund_info_em` 抓取 + 解析 | I/O + 纯 |
+| `expenses.py` | 费用抓取（第一版默认 `unknown`） | I/O |
+| `service.py` | `build_comparison` 编排：定池 → 逐只抓取 → 算结果 → 排名 | I/O |
+| `report/income.py`（在 report 包） | 终端 / Markdown / CSV 渲染 | 展示 |
+
+CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
+
+## ③ 实现细节
+
+### 数据源（东财哪些接口通 / 不通，实测见 data.md）
+- **分红明细**：`fund_open_fund_info_em(symbol, indicator="分红送配详情")`——单只 ETF 的**全历史**每笔
+  分红（510880 一次拿到 2007→今 19 笔），列 `权益登记日/除息日/每份分红/分红发放日`。
+  **需求文档原写 `fund_fh_em` 是错的**：那个只有「最近一笔」（全市场 ~7500 行、每只 1~2 条）。
+- **净值**：`fund_etf_fund_info_em(fund, start_date, end_date)`——单位净值 / 累计净值，按单只、约 1.8s。
+- **费用**：`fund_fee_em` 对 ETF 返回空表 → 第一版 `unknown`。
+- **不复权日线**：`TencentProvider(adjust="")` 经 `load_bars(adjust="")`，缓存走 `_raw` 命名空间。
+
+**已知限制（分红覆盖不全）**：`分红送配详情` 漏部分 ETF——实测 **512890（华泰柏瑞中证红利低波ETF，
+月月分红）返回 0 行**，被判 `MISSING_DIVIDEND`。这类 ETF 仍靠**累计净值曲线**（含全部分红）参与排名，
+只是缺现金 / 再投的显式拆分。新浪 `fund_etf_dividend_sina`（给累计分红、需差分成每笔、要 sz/sh 前缀）
+覆盖不同，是后续兜底候选（需求 §13 的「分红兜底」）。
+
+### series.py（四条曲线）
+- `price_curve`：`close_t/close_0 − 1`。
+- `cash_dividend_curve`：份额恒定，分红发放日到账并入现金，`equity=shares·close+现金累计`。
+- `reinvest_curve`：发放日收现金记 pending，**下一根开盘**买回（扣费、买不满一手转现金），无未来函数。
+- `acc_nav_curve`：`acc_nav_t/acc_nav_0 − 1`。
+- 分红发放日→bar 下标：首个日期 ≥ 发放日的 bar；发放日落在样本区间外（早于首日 / 晚于末日）不计。
+
+### metrics.py（指标 + 数据质量）
+- 四口径收益率取各自曲线末点；**年化 / 回撤以「分红再投」为准**（横向排名主口径）。
+- 分红次数 / 每份分红 / 分红率按**除息日落在样本期内**的事件算；样本期分红金额 = 期初满仓份额 ×
+  样本期每份分红；样本分红率 = 样本每份分红 / 期初价；近 12 月分红率 = 近 365 天每份分红 / 期末价。
+- `DataQuality`：`price_only`（无分红无净值）/ `missing_dividend` / `missing_nav` /
+  `partial`（净值覆盖 < 样本期 80% 或再投与累计净值末点差 > 15%，带 warning）/ `ok`。
+
+### report.py（编排 + 排名）
+- `build_etf_result`：算四曲线 + 指标，打包成 `EtfIncomeResult`（含样本期内分红明细）。
+- `rank_etfs`：默认 `annualized → drawdown → ttm_yield → expense`（再投年化↓→回撤↑→近12月分红率↓→
+  费用↑），排序键可配；多键靠从次到主的稳定排序。费用未知按大值垫底。
+
+### service.py（编排）
+- `IncomeCompareSpec`（区间 / 关键词或 symbols / 起始现金 / lot / fee / 排序键）→ `build_comparison` →
+  `IncomeCompareRun`（排名 + 池规模 + 跳过的无日线代码）。
+- 端口全可注入：`names_fn`（默认 mootdx 名录）、`bars_fn`（默认腾讯不复权日线）、`dividends_fn` /
+  `navs_fn` / `expenses_fn`（默认东财）。测试全传替身、离线跑通整条链。
+
+## ④ 改动历史
+
+- **2026-07-08（M7 首次实现，分三切）**：
+  - 切1 纯核心：`models` / `series`（四曲线，再投无未来函数 + 扣费 + 取整）/ `metrics`（指标 +
+    五态数据质量）/ `report`（结果模型 + 编排 + 排名）。单测 22 例。
+  - 切2 数据 I/O：`data` 层给 `load_bars` / 缓存加 `adjust` 维度（前复权 / 不复权分文件）；
+    `universe`（池筛选）/ `dividends`（东财分红送配详情，纠正需求把源从 fund_fh_em 改成
+    fund_open_fund_info_em）/ `nav` / `expenses`（unknown）。akshare 懒导入，纯解析器单测 14 例。
+  - 切3 报告 + CLI：`report/income`（终端 / Markdown / CSV）+ `service`（编排）+ `vgrid income
+    compare` 子命令。service 单测 4 例。
+  - 实测（510880 等）端到端出报告：价格 / 现金分红 / 再投 / 累计净值四口径 + 分红率 + 数据质量。
+  - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；分红覆盖不全的 ETF 靠累计净值参与排名，
+    新浪分红兜底留作后续；缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
