@@ -29,9 +29,16 @@
 | `cache.py` | `ParquetCache`：每个 (symbol, frame) 一个 parquet 文件，存全量，读回复用 `bars_from_columns` |
 | `loader.py` | `load_bars` 门面：组合 provider + cache，区间命中 / 增量合并 / refresh；默认源按周期路由 |
 
-> **行情源收敛（2026-07-08）**：`akshare_provider.py` 已删。东财（em）海外常年超时、新浪（sina）
-> 返回不复权价，两个 akshare 源都不可靠。现只留两个稳定源：**日线走腾讯前复权、分钟走 mootdx
-> 通达信**；实时报价 / 名称也从东财现货表换成 mootdx。
+> **行情源收敛（2026-07-08）**：`akshare_provider.py` 已删。东财（em）**K 线接口**（日线
+> `fund_etf_hist_em` / 分钟 `fund_etf_hist_min_em`，走 `push2his.../kline`）实测被对端秒断
+> （`RemoteDisconnected`，0.4s 直接 reset），新浪（sina）返回不复权价，两个 akshare 源做 K 线都不可靠。
+> 现只留两个稳定源：**日线走腾讯前复权、分钟走 mootdx 通达信**；实时报价 / 名称也从东财现货表换成 mootdx。
+>
+> **东财不是整个不通，是分接口的（2026-07-08 实测）**：被封的只有上面那两个 **K 线/历史行情**接口；
+> 东财的**基金分红**（`fund_fh_em` / `fund_fh_rank_em`）、**场内净值**（`fund_etf_fund_info_em`）、
+> **ETF 实时现货全表**（`fund_etf_spot_em`）走的是另外的 host/path，**都通**。所以：K 线继续用腾讯/mootdx；
+> M7 红利对比要的分红 / 净值照用东财；`fund_etf_spot_em` 留作 mootdx 报价的备选兜底源（暂不接）。
+> 别再把结论笼统写成「em 不通」——准确说是「**东财 K 线接口不通**」。
 
 ## ③ 实现细节
 
@@ -125,3 +132,10 @@
   ``web.quotes`` / ``paper.realtime`` / ``web.etf_info`` 三处换源。单测覆盖快照映射/保序/未知跳过/
   昨收 0 归空/名录合并/空降级（mock 共享连接不打网）。**取舍**：mootdx 只出不复权价，分钟粒度跨
   除权日缺口罕见故未接复权，需复权日线走腾讯（决策见对话，非单一源）。
+- **2026-07-08（摸清东财哪些接口通 / 不通）**：为 M7 红利对比实测东财各接口，结论是**按接口分**——
+  **K 线/历史行情**（`fund_etf_hist_em` 日线 / `fund_etf_hist_min_em` 分钟）被对端秒断
+  （`RemoteDisconnected`，0.4s reset），这才是当初判「em 不通」的真相（当时要的正是 K 线）；
+  而**分红明细**（`fund_fh_em`，全市场 ~7500 行 / 36s）、**累计分红排行**（`fund_fh_rank_em`，
+  ~7674 行 / 74s）、**场内净值**（`fund_etf_fund_info_em`，按单只 / 1.8s）、**ETF 实时现货全表**
+  （`fund_etf_spot_em`）**都通**。故 K 线维持腾讯 / mootdx 不变；分红 / 净值三个接口给 M7 用。
+  两个分红接口是**全市场整表**（服务端不能按代码筛），M7 里要整表拉一次落缓存、本地按红利 ETF 池过滤。
