@@ -11,7 +11,7 @@ from vgrid.income.service import IncomeCompareSpec, build_comparison
 
 _NAMES = {
     "510880": "上证红利ETF",
-    "512890": "红利低波ETF",
+    "563020": "红利低波ETF易方达",
     "159901": "深证100ETF",  # 非红利，关键词筛不中
 }
 
@@ -38,10 +38,10 @@ def _spec(**kw: object) -> IncomeCompareSpec:
 
 
 def test_keyword_pool_and_ranking() -> None:
-    # 510880 涨、512890 平；默认排序按再投年化，510880 应在前。
+    # 510880 涨、563020 平；默认排序按再投年化，510880 应在前。
     bars_map = {
         "510880": _bars(["1.00", "1.10", "1.20"]),
-        "512890": _bars(["1.00", "1.00", "1.00"]),
+        "563020": _bars(["1.00", "1.00", "1.00"]),
     }
     run = build_comparison(
         _spec(),
@@ -53,13 +53,13 @@ def test_keyword_pool_and_ranking() -> None:
     # 159901 非红利被关键词筛掉，池只 2 只
     assert run.pool_size == 2
     codes = [r.code for r in run.comparison.results]
-    assert codes == ["510880", "512890"]
+    assert codes == ["510880", "563020"]
     assert not run.skipped
 
 
 def test_skips_etf_without_bars() -> None:
     run = build_comparison(
-        _spec(symbols=("510880", "512890")),
+        _spec(symbols=("510880", "563020")),
         names_fn=lambda: _NAMES,
         bars_fn=lambda code, _s, _e: _bars(["1.00", "1.10"]) if code == "510880" else [],
         dividends_fn=lambda _c: [],
@@ -67,7 +67,7 @@ def test_skips_etf_without_bars() -> None:
     )
     assert run.pool_size == 2
     assert [r.code for r in run.comparison.results] == ["510880"]
-    assert run.skipped == ["512890"]
+    assert run.skipped == ["563020"]
 
 
 def test_explicit_symbols_skip_keyword_filter() -> None:
@@ -88,11 +88,11 @@ def test_explicit_symbols_skip_keyword_filter() -> None:
 def test_progress_callback_fires_per_etf() -> None:
     seen: list[str] = []
     build_comparison(
-        _spec(symbols=("510880", "512890")),
+        _spec(symbols=("510880", "563020")),
         names_fn=lambda: _NAMES,
         bars_fn=lambda _c, _s, _e: _bars(["1.00", "1.05"]),
         dividends_fn=lambda _c: [],
         navs_fn=lambda _c, _s, _e: [],
         on_progress=lambda _d, _t, code: seen.append(code),
     )
-    assert seen == ["510880", "512890"]
+    assert seen == ["510880", "563020"]

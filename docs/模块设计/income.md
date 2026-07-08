@@ -50,10 +50,10 @@ CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
 - **费用**：`fund_fee_em` 对 ETF 返回空表 → 第一版 `unknown`。
 - **不复权日线**：`TencentProvider(adjust="")` 经 `load_bars(adjust="")`，缓存走 `_raw` 命名空间。
 
-**已知限制（分红覆盖不全）**：`分红送配详情` 漏部分 ETF——实测 **512890（华泰柏瑞中证红利低波ETF，
-月月分红）返回 0 行**，被判 `MISSING_DIVIDEND`。这类 ETF 仍靠**累计净值曲线**（含全部分红）参与排名，
-只是缺现金 / 再投的显式拆分。新浪 `fund_etf_dividend_sina`（给累计分红、需差分成每笔、要 sz/sh 前缀）
-覆盖不同，是后续兜底候选（需求 §13 的「分红兜底」）。
+**分红源覆盖（实测到位）**：`分红送配详情` 对真红利 ETF 覆盖良好——510880（19 笔）/ 515180（6 笔）/
+515080（17 笔）/ 563020 红利低波（9 笔）都拿到全历史每笔分红。某只取不到分红（返回 0 行，多因代码
+不存在 / 非分红基金）时判 `missing_dividend`、仍靠累计净值曲线参与排名。新浪 `fund_etf_dividend_sina`
+（给累计分红、需差分成每笔、要 sz/sh 前缀）是可选备源（需求 §13 的「分红兜底」），暂不接。
 
 ### series.py（四条曲线）
 - `price_curve`：`close_t/close_0 − 1`。
@@ -90,6 +90,7 @@ CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
     fund_open_fund_info_em）/ `nav` / `expenses`（unknown）。akshare 懒导入，纯解析器单测 14 例。
   - 切3 报告 + CLI：`report/income`（终端 / Markdown / CSV）+ `service`（编排）+ `vgrid income
     compare` 子命令。service 单测 4 例。
-  - 实测（510880 等）端到端出报告：价格 / 现金分红 / 再投 / 累计净值四口径 + 分红率 + 数据质量。
-  - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；分红覆盖不全的 ETF 靠累计净值参与排名，
-    新浪分红兜底留作后续；缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
+  - 实测（510880 / 515180 / 515080 / 563020 等真红利 ETF）端到端出报告：价格 / 现金分红 / 再投 /
+    累计净值四口径 + 分红率 + 数据质量；分红源对真红利 ETF 覆盖到位。
+  - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；取不到分红的 ETF 靠累计净值参与排名；
+    新浪分红备源 + 缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
