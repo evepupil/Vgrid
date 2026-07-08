@@ -26,13 +26,15 @@
   border-bottom: 1px solid var(--hair);
 }
 
-/* 前 3 列（# / 代码 / 名称）左对齐 */
+/* 前 4 列（# / 代码 / 名称 / 样本期）左对齐 */
 .inc-table th:nth-child(1),
 .inc-table td:nth-child(1),
 .inc-table th:nth-child(2),
 .inc-table td:nth-child(2),
 .inc-table th:nth-child(3),
-.inc-table td:nth-child(3) {
+.inc-table td:nth-child(3),
+.inc-table th:nth-child(4),
+.inc-table td:nth-child(4) {
   text-align: left;
 }
 

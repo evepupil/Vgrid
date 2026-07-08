@@ -74,7 +74,7 @@ export default function Income() {
           en="RESULT"
           meta={
             cmp.data
-              ? `${cmp.data.start}→${cmp.data.end} · 池 ${cmp.data.pool_size}、纳入 ${rows.length}`
+              ? `查询 ${cmp.data.start}→${cmp.data.end} · 池 ${cmp.data.pool_size}、纳入 ${rows.length}`
               : '待运行'
           }
           className="rise d2"
@@ -134,6 +134,7 @@ function IncomeTable({
             <th>#</th>
             <th>代码</th>
             <th>名称</th>
+            <th>样本期</th>
             <th>再投年化</th>
             <th>分红再投</th>
             <th>价格</th>
@@ -155,6 +156,9 @@ function IncomeTable({
               <td>{i + 1}</td>
               <td className="b">{r.code}</td>
               <td>{r.name}</td>
+              <td className="faint">
+                {fmtMonth(r.metrics.sample_start)}~{fmtMonth(r.metrics.sample_end)}
+              </td>
               <td className={upDown(Number(r.metrics.annualized_return))}>
                 {pct(r.metrics.annualized_return)}
               </td>
@@ -178,6 +182,10 @@ function IncomeTable({
       </table>
     </div>
   )
+}
+
+function fmtMonth(s: string): string {
+  return s.slice(0, 7) // YYYY-MM-DD → YYYY-MM（样本期到月够看）
 }
 
 function pct(v: string | null): string {
