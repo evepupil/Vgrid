@@ -28,17 +28,13 @@ def test_weekly_picks_weekday() -> None:
 
 
 def test_monthly_picks_day_of_month() -> None:
-    days = scheduled_dates(
-        Frequency.MONTHLY, date(2024, 1, 1), date(2024, 3, 31), day_of_month=15
-    )
+    days = scheduled_dates(Frequency.MONTHLY, date(2024, 1, 1), date(2024, 3, 31), day_of_month=15)
     assert days == [date(2024, 1, 15), date(2024, 2, 15), date(2024, 3, 15)]
 
 
 def test_monthly_clamps_to_month_end() -> None:
     # 2 月没有 31 号 → 钳到 29（2024 闰年）
-    days = scheduled_dates(
-        Frequency.MONTHLY, date(2024, 2, 1), date(2024, 2, 29), day_of_month=31
-    )
+    days = scheduled_dates(Frequency.MONTHLY, date(2024, 2, 1), date(2024, 2, 29), day_of_month=31)
     assert days == [date(2024, 2, 29)]
 
 
