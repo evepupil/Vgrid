@@ -100,3 +100,7 @@
   `ModeProvider` 同步），mode 相关 GET 拼 `?mode=`，queryKey 带 mode 切换即重取。默认 **sim**（实盘
   通道未接，待切10 回 live）。旧平铺 `paper/*.sqlite` 不迁移。门禁：ruff + mypy strict（70 文件）+
   pytest 264 全过（+7 新）；前端 build + lint。
+- **2026-07-08（M7 红利对比 web）**：`web/income_api.py`（`run_income_compare` 序列化排名 rows +
+  四曲线降采样到 100 点）+ `web/routes/income.py`（`POST /api/income/compare`，body 给 keywords /
+  symbols + 区间 + 起始现金，复用 `income.service.build_comparison`）+ server 注册。前端 `Income.tsx`
+  红利页（复刻 M6 Compare：左配置 + 右排名表 + 选中行四曲线 `IncomeChart`）+ 导航入口（`/income`）。

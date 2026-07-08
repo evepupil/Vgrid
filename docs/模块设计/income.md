@@ -94,3 +94,12 @@ CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
     累计净值四口径 + 分红率 + 数据质量；分红源对真红利 ETF 覆盖到位。
   - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；取不到分红的 ETF 靠累计净值参与排名；
     新浪分红备源 + 缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
+- **2026-07-08（M7 web 前端）**：补 income web API + 前端页（M7 之前只有 CLI，需求 §3 原推迟）。
+  - 后端：`POST /api/income/compare`（`web/income_api.py` 的 `run_income_compare` + `web/routes/income.py`），
+    复用 `service.build_comparison`，返排名 rows（metrics + 四曲线降采样到 100 点，批量 ETF × 4 省带宽）
+    + pool_size / skipped。
+  - 前端：`Income.tsx`（左配置：关键词逗号分隔 / 或 symbols / 区间 / 起始现金 + 右排名表点行选中）
+    + `IncomeChart.tsx`（uPlot 四线叠加：价格模式色实线 / 价+现分蓝虚 / 价+分再投绿实 / 累计净值灰点，
+    以价格曲线交易日为 x 轴、累计净值按 day 查表对齐）+ `incomeForm.ts` + client API + `IconIncome` +
+    Rail 入口（`/income`）+ App 路由 + `income.css`。
+  - 门禁：ruff + mypy strict（102 文件）+ pytest 368 全过；前端 build + lint，包体 154.7KB gzip。
