@@ -7,6 +7,7 @@ import { Topbar } from './components/Topbar'
 import Backtest from './pages/Backtest'
 import Compare from './pages/Compare'
 import Dashboard from './pages/Dashboard'
+import Income from './pages/Income'
 import Portfolio from './pages/Portfolio'
 import Strategies from './pages/Strategies'
 import Watchlist from './pages/Watchlist'
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/backtest" element={<Backtest />} />
               <Route path="/compare" element={<Compare />} />
+              <Route path="/income" element={<Income />} />
               <Route path="/strategies" element={<Strategies />} />
               <Route path="/watchlist" element={<Watchlist />} />
             </Routes>

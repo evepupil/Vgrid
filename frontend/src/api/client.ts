@@ -211,6 +211,65 @@ export async function runCompare(body: CompareBody): Promise<CompareResult> {
   return post<CompareResult>('/api/compare', body)
 }
 
+// 红利 ETF 分红收益对比（M7）：批量 ETF 四口径（价格 / 价+现分 / 价+分再投 / 累计净值）
+export interface IncomeMetrics {
+  sample_start: string
+  sample_end: string
+  price_return: string
+  cash_dividend_return: string
+  reinvest_return: string
+  acc_nav_return: string | null
+  annualized_return: string // 分红再投口径年化，主排名键
+  max_drawdown: string
+  n_dividends: number
+  sample_per_share: string
+  sample_dividend_yield: string
+  ttm_dividend_yield: string // 近 12 月分红率
+  total_expense_rate: string | null
+  data_quality: 'ok' | 'partial' | 'missing_dividend' | 'missing_nav' | 'price_only'
+  warnings: string[]
+}
+
+export interface IncomeCurvePoint {
+  day: string
+  value: string // 累计收益率（起点 = 0）
+}
+
+export interface IncomeRow {
+  code: string
+  name: string
+  inception: string | null
+  metrics: IncomeMetrics
+  curves: {
+    price: IncomeCurvePoint[]
+    cash_dividend: IncomeCurvePoint[]
+    reinvest: IncomeCurvePoint[]
+    acc_nav: IncomeCurvePoint[]
+  }
+}
+
+export interface IncomeCompareResult {
+  pool_size: number
+  skipped: string[]
+  sort_keys: string[]
+  initial_cash: string
+  start: string
+  end: string
+  rows: IncomeRow[]
+}
+
+export interface IncomeCompareBody {
+  start: string
+  end: string
+  keywords?: string[] | null
+  symbols?: string[] | null
+  initial_cash?: string
+}
+
+export async function runIncomeCompare(body: IncomeCompareBody): Promise<IncomeCompareResult> {
+  return post<IncomeCompareResult>('/api/income/compare', body)
+}
+
 // 参数扫描（FR-8）
 export type ScanMetric = 'sharpe' | 'total_return' | 'annualized_return' | 'calmar'
 

@@ -19,6 +19,7 @@ from vgrid.web.routes import backtest as backtest_router
 from vgrid.web.routes import compare as compare_router
 from vgrid.web.routes import dca as dca_router
 from vgrid.web.routes import etf as etf_router
+from vgrid.web.routes import income as income_router
 from vgrid.web.routes import ladder as ladder_router
 from vgrid.web.routes import market as market_router
 from vgrid.web.routes import portfolio as portfolio_router
@@ -69,6 +70,7 @@ def create_app(
     app.include_router(compare_router.router)
     app.include_router(portfolio_router.router)
     app.include_router(etf_router.router)
+    app.include_router(income_router.router)
     app.include_router(ladder_router.router)
     app.include_router(quotes_router.router)
     app.include_router(scan_router.router)

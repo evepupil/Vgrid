@@ -4,6 +4,7 @@ import {
   IconCompare,
   IconDashboard,
   IconGear,
+  IconIncome,
   IconPortfolio,
   IconStrategies,
   IconWatchlist,
@@ -17,12 +18,13 @@ interface NavEntry {
   end: boolean
 }
 
-// 顺序：总览 / 仪表盘 / 回测 / 对比 / 策略库 / 关注
+// 顺序：总览 / 仪表盘 / 回测 / 对比 / 红利 / 策略库 / 关注
 const NAV: NavEntry[] = [
   { to: '/portfolio', tip: '总览 · Portfolio', Icon: IconPortfolio, end: false },
   { to: '/', tip: '仪表盘 · Instrument', Icon: IconDashboard, end: true },
   { to: '/backtest', tip: '回测 · Backtest', Icon: IconBacktest, end: false },
   { to: '/compare', tip: '对比 · Compare（网格/定投/买入持有）', Icon: IconCompare, end: false },
+  { to: '/income', tip: '红利 · Income（分红收益对比）', Icon: IconIncome, end: false },
   { to: '/strategies', tip: '策略库 · Strategies', Icon: IconStrategies, end: false },
   { to: '/watchlist', tip: '关注 · Watchlist（共享）', Icon: IconWatchlist, end: false },
 ]

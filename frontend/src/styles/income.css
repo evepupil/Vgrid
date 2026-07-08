@@ -1,0 +1,95 @@
+/* 红利 ETF 收益对比（M7）：排名表 + 选中行四曲线。
+   .cmp 配置/结果两栏布局、.cmp-legend 图例、.scanrow 警示行 均复用 compare.css。 */
+
+.inc-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.inc-table th,
+.inc-table td {
+  padding: 6px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inc-table th {
+  color: var(--faint);
+  font-weight: 400;
+  border-bottom: 1px solid var(--hair);
+}
+
+/* 前 3 列（# / 代码 / 名称）左对齐 */
+.inc-table th:nth-child(1),
+.inc-table td:nth-child(1),
+.inc-table th:nth-child(2),
+.inc-table td:nth-child(2),
+.inc-table th:nth-child(3),
+.inc-table td:nth-child(3) {
+  text-align: left;
+}
+
+.inc-table tbody tr {
+  cursor: pointer;
+  border-bottom: 1px solid var(--hair);
+}
+
+.inc-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.inc-sel {
+  background: rgba(245, 182, 44, 0.06);
+}
+
+/* 数据质量标签 */
+.inc-q {
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  color: var(--faint);
+}
+
+.inc-q--ok {
+  color: var(--up);
+  border-color: rgba(245, 182, 44, 0.4);
+}
+
+.inc-q--partial {
+  color: var(--acc);
+}
+
+.inc-q--missing_dividend,
+.inc-q--missing_nav,
+.inc-q--price_only {
+  color: var(--down);
+}
+
+/* 选中行下方：四曲线 + 说明 */
+.inc-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair);
+}
+
+.inc-detail__title {
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.inc-chart {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  padding: 8px;
+}

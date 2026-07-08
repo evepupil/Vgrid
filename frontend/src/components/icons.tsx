@@ -54,6 +54,16 @@ export function IconCompare(props: IconProps) {
   )
 }
 
+export function IconIncome(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20V4M4 20h16" />
+      <path d="M7 15l3-4 3 2 5-7" />
+      <circle cx="13" cy="13" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function IconWatchlist(props: IconProps) {
   return (
     <svg {...base} {...props}>
