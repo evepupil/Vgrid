@@ -39,12 +39,15 @@ class ParquetCache:
         self._dir = cache_dir
         self._dir.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, symbol: str, frame: Frame) -> Path:
-        return self._dir / f"{symbol}_{frame.value}.parquet"
+    def _path(self, symbol: str, frame: Frame, adjust: str = "qfq") -> Path:
+        # qfq 是历史默认，保持旧文件名（无后缀）不动；不复权 / 后复权各占独立命名空间，
+        # 前复权与不复权缓存互不覆盖（红利对比要不复权价，回测要前复权）。
+        suffix = _adjust_suffix(adjust)
+        return self._dir / f"{symbol}_{frame.value}{suffix}.parquet"
 
-    def load(self, symbol: str, frame: Frame) -> BarSeries | None:
+    def load(self, symbol: str, frame: Frame, adjust: str = "qfq") -> BarSeries | None:
         """读缓存；文件不存在返回 None。"""
-        path = self._path(symbol, frame)
+        path = self._path(symbol, frame, adjust)
         if not path.exists():
             return None
         table = pq.read_table(path)  # type: ignore[no-untyped-call]
@@ -52,17 +55,23 @@ class ParquetCache:
         bars = bars_from_columns(columns, frame)
         return BarSeries(symbol=symbol, frame=frame, bars=tuple(bars))
 
-    def save(self, series: BarSeries) -> None:
+    def save(self, series: BarSeries, adjust: str = "qfq") -> None:
         """覆盖写整个文件（series 应已是合并去重后的全量）。
 
         先写临时文件再 ``os.replace`` 原子替换：写一半被杀 / 断电 / 磁盘满时，原文件
         不受影响，不会留下半残的 parquet 让下次 ``load`` 崩。
         """
         table = _bars_to_table(series.bars)
-        path = self._path(series.symbol, series.frame)
+        path = self._path(series.symbol, series.frame, adjust)
         tmp = path.with_name(path.name + ".tmp")
         pq.write_table(table, tmp)  # type: ignore[no-untyped-call]
         os.replace(tmp, path)
+
+
+def _adjust_suffix(adjust: str) -> str:
+    """复权方式 → 缓存文件名后缀。qfq（历史默认）无后缀，不复权用 ``_raw``。"""
+    label = {"qfq": "", "": "raw"}.get(adjust, adjust)
+    return f"_{label}" if label else ""
 
 
 def _bars_to_table(bars: tuple[Bar, ...]) -> pa.Table:

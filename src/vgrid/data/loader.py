@@ -32,14 +32,15 @@ def default_cache_dir() -> Path:
     return Path.home() / ".vgrid" / "cache"
 
 
-def _default_provider(frame: Frame) -> BarProvider:
-    """按周期选默认源：日线走腾讯前复权（跨分红除权无假跳空），分钟走 mootdx（通达信）。
+def _default_provider(frame: Frame, adjust: str) -> BarProvider:
+    """按周期选默认源：日线走腾讯（按 ``adjust`` 复权），分钟走 mootdx（通达信，恒不复权）。
 
     东财 / 新浪源已弃用（em 海外不通、sina 不复权），现只留这两个稳定源。
+    ``adjust`` 只对日线有意义：回测要前复权（qfq），红利收益对比要不复权（""）。
     """
     if frame is Frame.DAILY:
-        return TencentProvider()  # 前复权日线
-    return MootdxProvider()  # 1m / 5m 分钟线
+        return TencentProvider(adjust=adjust)
+    return MootdxProvider()  # 1m / 5m 分钟线（mootdx 只出不复权，忽略 adjust）
 
 
 def load_bars(
@@ -51,24 +52,30 @@ def load_bars(
     provider: BarProvider | None = None,
     cache_dir: Path | None = None,
     refresh: bool = False,
+    adjust: str = "qfq",
 ) -> BarSeries:
-    """取 [start, end] 闭区间 K 线，优先缓存，缺了才下载并增量合并落盘。"""
-    cache = ParquetCache(cache_dir or default_cache_dir())
-    prov = provider or _default_provider(frame)
+    """取 [start, end] 闭区间 K 线，优先缓存，缺了才下载并增量合并落盘。
 
-    cached = _load_cached(cache, symbol, frame)
+    ``adjust`` 选复权方式（默认前复权），前复权与不复权缓存分文件互不覆盖。
+    """
+    cache = ParquetCache(cache_dir or default_cache_dir())
+    prov = provider or _default_provider(frame, adjust)
+
+    cached = _load_cached(cache, symbol, frame, adjust)
     if not refresh and _covers(cached, start, end):
         return _series(symbol, frame, _slice(cached, start, end))
 
     fresh = prov.fetch(symbol, start, end, frame)
     merged = _merge(cached, fresh.bars)
     if merged:
-        cache.save(_series(symbol, frame, merged))
+        cache.save(_series(symbol, frame, merged), adjust)
     return _series(symbol, frame, _slice(merged, start, end))
 
 
-def _load_cached(cache: ParquetCache, symbol: str, frame: Frame) -> tuple[Bar, ...]:
-    series = cache.load(symbol, frame)
+def _load_cached(
+    cache: ParquetCache, symbol: str, frame: Frame, adjust: str,
+) -> tuple[Bar, ...]:
+    series = cache.load(symbol, frame, adjust)
     return series.bars if series is not None else ()
 
 
