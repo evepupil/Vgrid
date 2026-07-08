@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -22,12 +23,17 @@ class NameSource(Protocol):
 
 
 class EtfInfoCache:
-    """代码→名称 内存缓存，首次查拉全量。"""
+    """代码→名称 内存缓存，首次查拉全量。
+
+    FastAPI 把同步路由放线程池跑，冷缓存时多个请求会同时触发拉取、还会读到半填缓存。
+    用 double-checked locking：命中无锁、未命中才串行拉取（review #33）。
+    """
 
     def __init__(self, quotes: NameSource | None = None) -> None:
         self._quotes: NameSource = quotes or MootdxQuotes()
         self._cache: dict[str, str] = {}
         self._ts: datetime | None = None
+        self._lock = threading.Lock()
 
     def get_name(self, symbol: str) -> str | None:
         self._ensure()
@@ -35,16 +41,21 @@ class EtfInfoCache:
 
     def invalidate(self) -> None:
         """清缓存（测试 / 强制刷新用）。"""
-        self._cache = {}
-        self._ts = None
+        with self._lock:
+            self._cache = {}
+            self._ts = None
 
     def _ensure(self) -> None:
         if self._ts is not None and datetime.now() - self._ts < _CACHE_TTL:
             return
-        names = self._quotes.names()
-        if names:  # 拉空（连接失败）不刷缓存，留着下次重试
-            self._cache = names
-            self._ts = datetime.now()
+        with self._lock:
+            # 再判一次：可能别的线程刚拉完
+            if self._ts is not None and datetime.now() - self._ts < _CACHE_TTL:
+                return
+            names = self._quotes.names()
+            if names:  # 拉空（连接失败）不刷缓存，留着下次重试
+                self._cache = names
+                self._ts = datetime.now()
 
 
 _cache = EtfInfoCache()

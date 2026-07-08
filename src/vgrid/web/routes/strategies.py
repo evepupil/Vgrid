@@ -71,7 +71,8 @@ def get_one(name: str, request: Request) -> dict[str, object]:
 def create(body: StrategyBody, request: Request) -> dict[str, object]:
     try:
         write_strategy(_dir(request), body.name, body.config)
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
+        # GridConfig.from_dict 缺必填字段抛 KeyError（review #26），统一回 400 而非 500
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return read_strategy(_dir(request), body.name)
 
@@ -80,7 +81,7 @@ def create(body: StrategyBody, request: Request) -> dict[str, object]:
 def update(name: str, body: dict[str, object], request: Request) -> dict[str, object]:
     try:
         write_strategy(_dir(request), name, body)
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return read_strategy(_dir(request), name)
 

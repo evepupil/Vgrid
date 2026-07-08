@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
@@ -18,9 +20,22 @@ router = APIRouter(tags=["state"])
 
 @router.get("/api/state")
 def state(request: Request, db: str | None = Query(default=None)) -> JSONResponse:
-    """读库 replay 出面板状态。无 config 返 404。"""
-    path = db if db is not None else request.app.state.default_db
-    conn = connect(path)
+    """读库 replay 出面板状态。无 config 返 404。
+
+    GET 不建库、校验 ``db`` 路径落在 ``data_dir`` 内（review #24）——否则一个带
+    ``db=../../foo.sqlite`` 的 GET 会在磁盘上凭空建出空 sqlite 库，还能路径遍历。
+    """
+    data_dir = Path(request.app.state.data_dir).resolve()
+    if db is not None:
+        candidate = Path(db)
+        path = (candidate if candidate.is_absolute() else data_dir / candidate).resolve()
+        if not path.is_relative_to(data_dir):
+            return JSONResponse({"error": "db 路径越界"}, status_code=400)
+    else:
+        path = Path(request.app.state.default_db)
+    if not path.exists():
+        return JSONResponse({"error": "库不存在"}, status_code=404)
+    conn = connect(str(path))
     try:
         view = load_state(conn)
     finally:

@@ -97,17 +97,16 @@ def deploy_strategy(
 
     paper_dir.mkdir(parents=True, exist_ok=True)
     db_path = paper_dir / f"{name}.sqlite"
-    if db_path.exists():
-        conn = connect(str(db_path))
-        try:
-            existing = load_config(conn)
-        finally:
-            conn.close()
-        if existing is not None:
-            raise FileExistsError(f"策略已部署为实例：{name}")
-
+    # 检查 + 写入放同一连接，且用 BEGIN IMMEDIATE 立即拿写锁（review #32）——
+    # 原先 exists()+load_config 与后面的 connect+save_config 是两段连接周期、无锁，
+    # 两个并发部署都能过检查同时写入。现在第二个会卡在 BEGIN，等首个提交后读到 config 再抛。
     conn = connect(str(db_path))
     try:
+        conn.execute("BEGIN IMMEDIATE")
+        existing = load_config(conn)
+        if existing is not None:
+            conn.rollback()
+            raise FileExistsError(f"策略已部署为实例：{name}")
         save_config(conn, config)
     finally:
         conn.close()

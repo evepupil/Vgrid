@@ -40,6 +40,9 @@ def _resolve_price(raw: str | None, config: GridConfig) -> Decimal:
     if raw is None:
         return (config.lower_price + config.upper_price) / 2
     try:
-        return Decimal(raw)
+        price = Decimal(raw)
     except InvalidOperation as exc:
         raise HTTPException(status_code=400, detail=f"价格非法：{raw}") from exc
+    if not price.is_finite():  # 挡住 inf / -inf / NaN（review #34），否则进引擎行为未定义
+        raise HTTPException(status_code=400, detail=f"价格必须为有限数：{raw}")
+    return price
