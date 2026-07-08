@@ -87,16 +87,24 @@ interface Props {
   equity: EquityPoint[]
   buyHold: { ts: string; equity: string }[]
   drawdown: { ts: string; drawdown: string }[]
-  metrics: Metrics
+  metrics?: Metrics // 仅在 showStats 时用于内嵌指标行
+  showStats?: boolean // 默认显示内嵌指标行；定投自带 KPI 行时关掉
+  legendText?: string // 回撤条右侧图例说明（默认网格口径）
 }
 
-/** 净值曲线：指标行 + 净值主图（网格实线 + 买入持有绿虚）+ 回撤条。看盘与回测共用。 */
-export function EquityChart({ equity, buyHold, drawdown, metrics }: Props) {
+/** 净值曲线：可选指标行 + 净值主图（实线 + 买入持有绿虚）+ 回撤条。看盘 / 回测 / 定投共用。 */
+export function EquityChart({
+  equity,
+  buyHold,
+  drawdown,
+  metrics,
+  showStats = true,
+  legendText = '实线=网格 · 绿虚=买入持有',
+}: Props) {
   const { mode } = useMode()
   const eq = equity
   const bh = buyHold
   const dd = drawdown
-  const m = metrics
 
   const eqData = useMemo<uPlot.AlignedData>(() => {
     const xs = eq.map((p) => new Date(p.ts).getTime() / 1000)
@@ -119,21 +127,29 @@ export function EquityChart({ equity, buyHold, drawdown, metrics }: Props) {
   }
 
   const lastEq = Number(eq[eq.length - 1]?.equity ?? 0)
-  const totalRet = Number(m.total_return)
-  const bhRet = Number(m.buy_hold_return)
 
   return (
     <div className="eq">
-      <div className="eq__row">
-        <Stat k="末权益" v={`¥ ${fmt(lastEq, 0)}`} />
-        <Stat k="总收益" v={pct(m.total_return)} cls={totalRet >= 0 ? 'up' : 'down'} />
-        <Stat k="买入持有" v={pct(m.buy_hold_return)} cls={bhRet >= 0 ? 'up' : 'down'} />
-        <Stat k="最大回撤" v={`−${(Number(m.max_drawdown) * 100).toFixed(1)}%`} cls="down" />
-      </div>
+      {showStats && metrics && (
+        <div className="eq__row">
+          <Stat k="末权益" v={`¥ ${fmt(lastEq, 0)}`} />
+          <Stat
+            k="总收益"
+            v={pct(metrics.total_return)}
+            cls={Number(metrics.total_return) >= 0 ? 'up' : 'down'}
+          />
+          <Stat
+            k="买入持有"
+            v={pct(metrics.buy_hold_return)}
+            cls={Number(metrics.buy_hold_return) >= 0 ? 'up' : 'down'}
+          />
+          <Stat k="最大回撤" v={`−${(Number(metrics.max_drawdown) * 100).toFixed(1)}%`} cls="down" />
+        </div>
+      )}
       <Uplot opts={eqOpts} data={eqData} height={200} />
       <div className="eq__split">
         <span className="meta">回撤 DRAWDOWN</span>
-        <span className="meta">实线=网格 · 绿虚=买入持有</span>
+        <span className="meta">{legendText}</span>
       </div>
       <Uplot opts={ddOpts} data={ddData} height={54} />
     </div>

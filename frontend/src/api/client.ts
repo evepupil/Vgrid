@@ -125,6 +125,55 @@ export async function runBacktest(body: BacktestBody): Promise<BacktestResult> {
   return post<BacktestResult>('/api/backtest', body)
 }
 
+// 量化定投回测（M6）
+export interface DcaMetrics {
+  initial_cash: string
+  invested_amount: string // 累计投入本金
+  final_cash: string
+  final_market_value: string
+  final_equity: string
+  profit: string // 账户净利（含手续费）
+  profit_on_invested: string // 持仓市值 − 累计投入
+  profit_rate_on_invested: string
+  xirr: string | null // 真实年化，无解为 null
+  max_drawdown: string
+  total_fee: string
+  n_buys: number
+  skipped_count: number
+  buy_hold_return: string
+}
+
+export interface DcaTrade {
+  ts: string
+  price: string
+  shares: number
+  notional: string
+  fee: string
+  multiplier: string // 金额倍数（固定=1，加码/偏离可≠1）
+}
+
+export interface DcaBacktestResult {
+  metrics: DcaMetrics
+  equity_curve: EquityPoint[]
+  drawdown_curve: { ts: string; drawdown: string }[]
+  buy_hold_curve: { ts: string; equity: string }[]
+  trades: DcaTrade[]
+  skipped: { ts: string; reason: string }[]
+  n_bars: number
+}
+
+export interface DcaBacktestBody {
+  start: string
+  end: string
+  frame?: string
+  config: StrategyConfig
+  symbol?: string
+}
+
+export async function runDcaBacktest(body: DcaBacktestBody): Promise<DcaBacktestResult> {
+  return post<DcaBacktestResult>('/api/dca/backtest', body)
+}
+
 // 参数扫描（FR-8）
 export type ScanMetric = 'sharpe' | 'total_return' | 'annualized_return' | 'calmar'
 
