@@ -19,7 +19,7 @@
 
 | 文件 | 内容 |
 |---|---|
-| `realtime.py` | `RealtimeProvider` 协议 + `AkshareRealtimeProvider`（akshare 实时 ETF 盘） |
+| `realtime.py` | `RealtimeProvider` 协议 + `MootdxRealtimeProvider`（通达信实时 ETF 盘） |
 | `session.py` | `in_session`（A 股 9:30–11:30 / 13:00–15:00 工作日）、`next_session_open` |
 | `runner.py` | `PaperRunner`：`replay` 重建、`process_tick` 单步、`run` 长驻循环、`snapshot` 状态 |
 
@@ -34,14 +34,17 @@
 - **run()**：`replay` 后长驻循环；盘中 `step_once`（fetch + `process_tick`）+ `sleep(interval)`，
   盘外 sleep 到下一开盘（至多 60s 重判，防时钟漂移）。
 - **配置一致性**：`__init__` 校验 DB 已存配置与传入一致，不一致报错（防误用）。
-- **akshare 实时接口**：`fund_etf_spot_em` 全量按 symbol 过滤取「最新价」；接口 / 列名待代理
-  通后实测确认（适配集中在本文件，和 data 层同思路）。
+- **实时接口**：走 `data.mootdx_quotes.MootdxQuotes.snapshot([symbol])` 取现价（通达信协议，
+  稳定不限 IP）。原东财 `fund_etf_spot_em` 海外常年超时，已换掉（详见 [data 模块](./data.md)）。
 
 ## ④ 改动历史
 
 - **2026-07-06（M4a 首次实现）**：realtime provider（akshare + 协议）、session（A 股时段）、
   runner（replay + process_tick + run + snapshot）。单测覆盖首次 start 零成交、tick 驱动买卖
   落库、replay 状态一致、配置不一致报错、时段判断（盘内 / 盘前 / 午休 / 盘后 / 周末）。
+- **2026-07-08（实时源换 mootdx）**：东财 `fund_etf_spot_em` 海外常年超时，`AkshareRealtimeProvider`
+  换成 `MootdxRealtimeProvider`（走 `data.mootdx_quotes` 通达信实时报价）。协议 `RealtimeProvider`
+  不变，`PaperRunner` 一行不改。
 - **2026-07-06（M4a 修复）**：`process_tick` 首个 tick 的 start 成交（CENTER 建仓）原被丢弃,
   改成落库；补 CENTER 建仓单测。
 - **2026-07-07（切10a 推送）**：`PaperRunner.__init__` 加可选 `notifier: Notifier | None`；
