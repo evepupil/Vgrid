@@ -9,6 +9,33 @@
 
 ---
 
+## 解决状态（2026-07-09 开发会话）
+
+> 本文件 #20–#37。开发在 review 之后又往前推了 M6/M7 + 删 akshare + 报价换 mootdx，顺带修掉了几条；剩余 #21/#22/#24/#26/#30–#37 共 12 条由本次开发会话清掉。
+
+| 本文 # | 状态 | commit |
+|---|---|---|
+| 20 | ✅ 开发已修：删 akshare、日线默认改腾讯(qfq)、cache 加 adjust 维度 | `1c0ebf2` `04677af` |
+| 21 | ✅ `save_tick_with_fills` 单事务 | `cae9731` |
+| 22 | ✅ tick 加 seq 主键、按 seq 回放 | `cae9731` |
+| 23 | ✅ 开发已修：报价换 mootdx，无 akshare NaN 问题 | `85b03a2` |
+| 24 | ✅ GET 不建库 + 校验 db 路径在 data_dir 内 | `ca52943` |
+| 25 | 🔲 已决策 A（运行中拒绝编辑、提示先停实例），待实现 | — |
+| 26 | ✅ create/update 补 catch KeyError | `ca52943` |
+| 27 | ✅ 开发已修：mode 改 `Literal["live","sim"]`，FastAPI 422 拦住 | 切9 |
+| 28 | ✅ 开发已修：etf_info 换 mootdx | `85b03a2` |
+| 29 | 🔲 待修：腾讯 qfq 静默退回 day（不复权） | — |
+| 30 | ✅ income 测试 `_compute` 标全类型 + FeeModel 直接导入 | `cd71dcf` |
+| 31 | ✅ connect 加 busy_timeout+WAL、收编 web 裸 connect | `cae9731` |
+| 32 | ✅ 部署检查+写入并进单连接、`BEGIN IMMEDIATE` 拿写锁 | `ca52943` |
+| 33 | ✅ etf_info 缓存 double-checked locking | `ca52943` |
+| 34 | ✅ `_resolve_price` 判 `is_finite` | `ca52943` |
+| 35 | ✅ fills 加 `UNIQUE(ts,side,price,shares,level_index)` | `cae9731` |
+| 36 | ✅ `PaperRunner.__init__` 自动 replay | `cae9731` |
+| 37 | ✅ mootdx `>=0.9` → `>=0.9.11` | `cd71dcf` |
+
+---
+
 ## 〇、backlog 核实（19 条）
 
 开发在 review 记录里标了"已解决"，我逐条核实——**不是糊弄，全部改对了**：
