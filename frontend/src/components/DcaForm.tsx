@@ -5,27 +5,36 @@ interface Props {
   onChange: (f: DcaFormState) => void
   onRun: () => void
   pending: boolean
+  compact?: boolean // 对比屏复用：藏标的/区间/周期（由外层共享），去掉运行按钮
 }
 
 /** 定投策略配置表单（受控）。频率决定星期/号数字段；金额规则决定跌幅档位/均线子表单。 */
-export function DcaForm({ form, onChange, onRun, pending }: Props) {
+export function DcaForm({ form, onChange, onRun, pending, compact = false }: Props) {
   const set = (k: keyof DcaFormState, v: string) => onChange({ ...form, [k]: v })
   const setTiers = (tiers: DcaTierForm[]) => onChange({ ...form, tiers })
 
   return (
     <div className="form">
-      <div className="fg">
-        <label>标的 SYMBOL</label>
-        <input value={form.symbol} onChange={(e) => set('symbol', e.target.value)} spellCheck={false} />
-      </div>
-      <div className="frow">
-        <Field label="起始">
-          <input type="date" value={form.start} onChange={(e) => set('start', e.target.value)} />
-        </Field>
-        <Field label="结束">
-          <input type="date" value={form.end} onChange={(e) => set('end', e.target.value)} />
-        </Field>
-      </div>
+      {!compact && (
+        <>
+          <div className="fg">
+            <label>标的 SYMBOL</label>
+            <input
+              value={form.symbol}
+              onChange={(e) => set('symbol', e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+          <div className="frow">
+            <Field label="起始">
+              <input type="date" value={form.start} onChange={(e) => set('start', e.target.value)} />
+            </Field>
+            <Field label="结束">
+              <input type="date" value={form.end} onChange={(e) => set('end', e.target.value)} />
+            </Field>
+          </div>
+        </>
+      )}
 
       <div className="fg">
         <label>定投频率</label>
@@ -153,17 +162,21 @@ export function DcaForm({ form, onChange, onRun, pending }: Props) {
         </div>
       )}
 
-      <div className="fg">
-        <label>周期</label>
-        <select value={form.frame} onChange={(e) => set('frame', e.target.value)}>
-          <option value="1d">日线</option>
-          <option value="1m">1 分钟</option>
-        </select>
-      </div>
+      {!compact && (
+        <div className="fg">
+          <label>周期</label>
+          <select value={form.frame} onChange={(e) => set('frame', e.target.value)}>
+            <option value="1d">日线</option>
+            <option value="1m">1 分钟</option>
+          </select>
+        </div>
+      )}
 
-      <button type="button" className="run" onClick={onRun} disabled={pending}>
-        {pending ? '⏳ 回测运行中…' : '▶ 跑定投回测'}
-      </button>
+      {!compact && (
+        <button type="button" className="run" onClick={onRun} disabled={pending}>
+          {pending ? '⏳ 回测运行中…' : '▶ 跑定投回测'}
+        </button>
+      )}
     </div>
   )
 }

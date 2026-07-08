@@ -46,6 +46,14 @@ export function IconStrategies(props: IconProps) {
   )
 }
 
+export function IconCompare(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3v18M5 7h14M5 7l-3 6h6zM19 7l-3 6h6z" />
+    </svg>
+  )
+}
+
 export function IconWatchlist(props: IconProps) {
   return (
     <svg {...base} {...props}>

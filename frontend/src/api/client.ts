@@ -174,6 +174,43 @@ export async function runDcaBacktest(body: DcaBacktestBody): Promise<DcaBacktest
   return post<DcaBacktestResult>('/api/dca/backtest', body)
 }
 
+// 策略对比（M6）：网格 / 定投 / 买入持有 同起始现金
+export interface CompareRow {
+  name: string // 网格 | 定投 | 买入持有
+  final_equity: string
+  profit: string
+  total_return: string // 对起始现金
+  annualized_return: string
+  max_drawdown: string
+  total_fee: string
+  n_trades: number
+  invested: string | null // 仅定投
+  xirr: string | null // 仅定投
+  curve: EquityPoint[] // 该策略净值曲线（供叠加）
+}
+
+export interface CompareResult {
+  initial_cash: string
+  first_day: string
+  last_day: string
+  n_bars: number
+  rows: CompareRow[]
+}
+
+export interface CompareBody {
+  symbol: string
+  start: string
+  end: string
+  frame?: string
+  initial_cash?: string | null
+  grid_config?: StrategyConfig | null
+  dca_config?: StrategyConfig | null
+}
+
+export async function runCompare(body: CompareBody): Promise<CompareResult> {
+  return post<CompareResult>('/api/compare', body)
+}
+
 // 参数扫描（FR-8）
 export type ScanMetric = 'sharpe' | 'total_return' | 'annualized_return' | 'calmar'
 

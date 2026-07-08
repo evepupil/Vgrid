@@ -1,0 +1,71 @@
+/* 对比屏（M6）：配置 + 三方净值叠加 + 对照表。表基样式在 shell.css。 */
+
+.cmp {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+}
+
+.cmp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-m);
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+}
+.cmp-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--acc);
+}
+.cmp-hint {
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.cmp-result {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cmp-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cmp-legend {
+  display: flex;
+  gap: 16px;
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  color: var(--dim);
+}
+.cmp-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cmp-legend__item i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.cmp-table .cmp-best td {
+  background: var(--acc-bg);
+}
+.cmp-table .cmp-best td.b {
+  color: var(--acc);
+  font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+  .cmp {
+    grid-template-columns: 1fr;
+  }
+}
