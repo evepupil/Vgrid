@@ -4,6 +4,7 @@
 - ``vgrid fetch``    只下载行情并写入本地缓存（预热 / 调试）。
 - ``vgrid backtest`` 下载行情 → 跑网格回测 → 终端摘要 + Markdown 报告。
 - ``vgrid dca``      下载行情 → 跑量化定投回测 → 终端摘要 + Markdown 报告。
+- ``vgrid compare``  网格 / 定投 / 买入持有 同区间、同起始现金对比。
 - ``vgrid scan``     网格搜索参数扫描。
 - ``vgrid paper``    模拟盘（run / status / serve）。
 
@@ -23,13 +24,21 @@ from pathlib import Path
 from typing import Any
 
 from vgrid.backtest import simulate
+from vgrid.backtest.compare import compare_strategies
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
 from vgrid.dca import DcaConfig, run_dca
 from vgrid.notify import make_notifier
 from vgrid.paper import MootdxRealtimeProvider, PaperRunner
-from vgrid.report import render_dca_report, render_dca_summary, render_report, render_summary
+from vgrid.report import (
+    render_comparison,
+    render_comparison_report,
+    render_dca_report,
+    render_dca_summary,
+    render_report,
+    render_summary,
+)
 from vgrid.scan import ScanSpec, rank, render_scan_report, run_scan
 from vgrid.store import connect, load_config
 from vgrid.web import create_app
@@ -49,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     handlers: dict[str, Callable[[argparse.Namespace], int]] = {
         "fetch": _cmd_fetch,
         "dca": _cmd_dca,
+        "compare": _cmd_compare,
         "scan": _cmd_scan,
         "backtest": _cmd_backtest,
     }
@@ -94,6 +104,18 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_data_args(p_dca)
     p_dca.add_argument("--config", type=Path, required=True, help="定投配置 JSON（DcaConfig）")
     p_dca.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+
+    p_cmp = sub.add_parser("compare", help="网格 / 定投 / 买入持有 同区间对比")
+    _add_data_args(p_cmp)
+    p_cmp.add_argument("--grid-config", type=Path, default=None, help="网格配置 JSON（可选）")
+    p_cmp.add_argument("--dca-config", type=Path, default=None, help="定投配置 JSON（可选）")
+    p_cmp.add_argument(
+        "--initial-cash",
+        type=Decimal,
+        default=None,
+        help="三方共同起始现金（默认取网格 capital_cap，否则定投 cash_cap）",
+    )
+    p_cmp.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
 
     p_scan = sub.add_parser("scan", help="网格搜索参数扫描")
     _add_data_args(p_scan)
@@ -199,6 +221,31 @@ def _cmd_dca(args: argparse.Namespace) -> int:
     print(render_dca_summary(result, config))
     report = render_dca_report(result, config)
     out_path = _write_report(report, args.out, f"{args.symbol}_dca", args.frame)
+    print(f"\n完整报告：{out_path}")
+    return 0
+
+
+def _cmd_compare(args: argparse.Namespace) -> int:
+    frame = Frame(args.frame)
+    grid_cfg = GridConfig.from_dict(_load_json(args.grid_config)) if args.grid_config else None
+    dca_cfg = DcaConfig.from_dict(_load_json(args.dca_config)) if args.dca_config else None
+    if grid_cfg is not None:
+        initial = args.initial_cash if args.initial_cash is not None else grid_cfg.capital_cap
+    elif dca_cfg is not None:
+        initial = args.initial_cash if args.initial_cash is not None else dca_cfg.cash_cap
+    else:
+        print("需至少给 --grid-config 或 --dca-config 之一", file=sys.stderr)
+        return 1
+    series = load_bars(args.symbol, args.start, args.end, frame, refresh=args.refresh)
+    if not series.bars:
+        print(f"{args.symbol} 在 {args.start} ~ {args.end} 无数据，无法对比")
+        return 1
+    comparison = compare_strategies(
+        series, initial_cash=initial, grid_config=grid_cfg, dca_config=dca_cfg
+    )
+    print(render_comparison(comparison))
+    report = render_comparison_report(comparison)
+    out_path = _write_report(report, args.out, f"{args.symbol}_compare", args.frame)
     print(f"\n完整报告：{out_path}")
     return 0
 

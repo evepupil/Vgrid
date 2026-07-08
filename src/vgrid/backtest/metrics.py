@@ -45,7 +45,7 @@ def compute_metrics(
         initial_cash=initial_cash,
         final_equity=final_equity,
         total_return=total_return,
-        annualized_return=_annualized(total_return, bars),
+        annualized_return=annualized_return(total_return, bars),
         max_drawdown=max_drawdown_of(equity_curve),
         sharpe=sharpe_of(equity_curve, frame),
         win_rate=_win_rate(sell_pnls),
@@ -69,7 +69,11 @@ def _ratio(numer: Decimal, denom: Decimal) -> Decimal:
 _MIN_SAMPLES = 2  # 算年化 / 夏普所需的最少权益点数
 
 
-def _annualized(total_return: Decimal, bars: tuple[Bar, ...]) -> Decimal:
+def annualized_return(total_return: Decimal, bars: tuple[Bar, ...]) -> Decimal:
+    """总收益率 → 自然日复利年化（CAGR，首末相差天数 / 365）。
+
+    网格 / 定投 / 买入持有三方对比时共用这一份口径，避免各算各的漂移。
+    """
     if len(bars) < _MIN_SAMPLES:
         return total_return
     days = Decimal(max((bars[-1].ts - bars[0].ts).days, 1))

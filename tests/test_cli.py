@@ -75,6 +75,17 @@ def test_dca_invalid_config_returns_1(
     assert "错误" in capsys.readouterr().err
 
 
+def test_compare_needs_a_config_returns_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # 两个配置都不给 → 下载前就退 1（不打网）
+    rc = main(
+        ["compare", "--symbol", "159920", "--start", "2024-01-02", "--end", "2024-01-03"]
+    )
+    assert rc == 1
+    assert "至少" in capsys.readouterr().err
+
+
 def test_scan_missing_spec_file_returns_1(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
