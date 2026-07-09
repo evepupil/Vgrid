@@ -66,7 +66,8 @@ class PaperRunner:
             raise ValueError("DB 已存不同配置，请用同一库或新库")
         if existing is None:
             save_config(conn, config)
-        self.replay()  # 自动断点续跑（review #36）：免得调用方忘调就 process_tick、引擎从中枢重仓与库历史脱节
+        # 自动断点续跑（review #36）：免得调用方忘调就 process_tick、引擎从中枢重仓与库历史脱节
+        self.replay()
 
     @property
     def engine(self) -> GridEngine:
