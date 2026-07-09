@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import date
 
+from vgrid.income.combo import ComboResult
 from vgrid.income.metrics import DataQuality, IncomeMetrics
 from vgrid.income.report import EtfIncomeResult
 from vgrid.income.service import IncomeCompareRun
@@ -136,6 +138,23 @@ def render_income_report(run: IncomeCompareRun) -> str:
         *_quality_notes(rows),
     ]
     return "\n".join(lines)
+
+
+def render_combo_summary(
+    result: ComboResult, *, symbol: str, strategy: str, start: date, end: date
+) -> str:
+    """红利增强回测终端摘要：策略 vs 分红再投增强 + 分红贡献。"""
+    return "\n".join(
+        [
+            f"红利增强回测（{symbol} · {strategy} · {start} ~ {end}）",
+            f"  策略收益（价格口径，不含分红）：{pct(result.strategy_return)}",
+            f"  分红再投增强后收益：           {pct(result.enhanced_return)}",
+            f"  分红贡献（增强 − 策略）：       {pct(result.dividend_boost)}",
+            f"  期间累计到账分红：{cash(result.dividend_cash_total)} 元，"
+            f"再投买入 {result.reinvest_shares} 份",
+            "  注：策略跑在不复权价上（除权日真跌），分红按持仓在发放日到账、下一开盘再投。",
+        ],
+    )
 
 
 def render_income_csv(run: IncomeCompareRun) -> str:

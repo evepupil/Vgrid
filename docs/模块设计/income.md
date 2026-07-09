@@ -36,9 +36,10 @@
 | `nav.py` | 东财 `fund_etf_fund_info_em` 抓取 + 解析 | I/O + 纯 |
 | `expenses.py` | 费用抓取（第一版默认 `unknown`） | I/O |
 | `service.py` | `build_comparison` 编排：定池 → 逐只抓取 → 算结果 → 排名 | I/O |
-| `report/income.py`（在 report 包） | 终端 / Markdown / CSV 渲染 | 展示 |
+| `combo.py` | 红利增强组合回测：分红再投 overlay + 定投 / 网格便捷封装 | 纯 |
+| `report/income.py`（在 report 包） | 终端 / Markdown / CSV / 增强摘要渲染 | 展示 |
 
-CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
+CLI：`vgrid income compare`（横向对比）、`vgrid income enhance`（单只策略 + 分红增强）。
 
 ## ③ 实现细节
 
@@ -94,6 +95,13 @@ CLI：`vgrid income compare`（`cli/app.py` 的 `_cmd_income_compare`）。
     累计净值四口径 + 分红率 + 数据质量；分红源对真红利 ETF 覆盖到位。
   - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；取不到分红的 ETF 靠累计净值参与排名；
     新浪分红备源 + 缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
+- **2026-07-09（M7 深化 · 红利增强组合回测）**：`combo.py` 把「分红再投」叠到任意策略上——
+  策略在**不复权**价上跑（除权日真跌），从其逐 bar 权益反推持仓份额（`position_value/close`），
+  按持仓在发放日收分红、下一开盘再投（口径「再投」，扣费、买不满一手留现金），**不改 DCA/网格引擎**。
+  `dividend_reinvest_overlay` 引擎无关 + `dca_dividend_combo` / `grid_dividend_combo` 便捷封装；
+  `report.render_combo_summary` + CLI `vgrid income enhance --strategy dca|grid`。
+  实测 510880 月定投 2021–2024：价格口径 11.79% → 分红增强 18.68%（分红贡献 +6.89%）。单测 5 例。
+  **取舍**：分红按**发放日持仓**算（严格应按权益登记日，持仓几天内变动小，近似；与 series 一致）。
 - **2026-07-08（M7 web 前端）**：补 income web API + 前端页（M7 之前只有 CLI，需求 §3 原推迟）。
   - 后端：`POST /api/income/compare`（`web/income_api.py` 的 `run_income_compare` + `web/routes/income.py`），
     复用 `service.build_comparison`，返排名 rows（metrics + 四曲线降采样到 100 点，批量 ETF × 4 省带宽）

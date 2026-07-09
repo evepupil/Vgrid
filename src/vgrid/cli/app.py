@@ -30,6 +30,8 @@ from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
 from vgrid.dca import DcaConfig, run_dca
+from vgrid.income.combo import dca_dividend_combo, grid_dividend_combo
+from vgrid.income.dividends import fetch_dividends
 from vgrid.income.report import DEFAULT_SORT
 from vgrid.income.service import IncomeCompareSpec, build_comparison
 from vgrid.income.universe import DEFAULT_KEYWORDS
@@ -44,6 +46,7 @@ from vgrid.report import (
     render_summary,
 )
 from vgrid.report.income import (
+    render_combo_summary,
     render_income_csv,
     render_income_report,
     render_income_summary,
@@ -194,6 +197,16 @@ def _add_income_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser])
     p.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
     p.add_argument("--format", default="markdown,csv", help="输出格式，逗号分隔：markdown,csv")
 
+    pe = income_sub.add_parser("enhance", help="单只红利 ETF：策略(定投/网格) + 分红再投增强对照")
+    pe.add_argument("--symbol", required=True, help="标的代码，如 510880")
+    pe.add_argument("--start", type=_parse_date, required=True, help="起始日期 YYYY-MM-DD")
+    pe.add_argument("--end", type=_parse_date, required=True, help="结束日期 YYYY-MM-DD")
+    pe.add_argument("--strategy", choices=["dca", "grid"], required=True, help="基准策略")
+    pe.add_argument(
+        "--config", type=Path, required=True, help="策略配置 JSON（DcaConfig / GridConfig）",
+    )
+    pe.add_argument("--refresh", action="store_true", help="强制重新下载不复权日线")
+
 
 def _add_data_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--symbol", required=True, help="标的代码，如 159920")
@@ -324,8 +337,31 @@ def _cmd_scan(args: argparse.Namespace) -> int:
 def _cmd_income(args: argparse.Namespace) -> int:
     if args.income_command == "compare":
         return _cmd_income_compare(args)
+    if args.income_command == "enhance":
+        return _cmd_income_enhance(args)
     print(f"未知 income 子命令：{args.income_command}", file=sys.stderr)
     return 1
+
+
+def _cmd_income_enhance(args: argparse.Namespace) -> int:
+    # 分红增强要不复权价（除权日真跌，分红作补偿），故 adjust=""。
+    bars = load_bars(
+        args.symbol, args.start, args.end, Frame.DAILY, adjust="", refresh=args.refresh
+    )
+    if not bars.bars:
+        print(f"{args.symbol} 在 {args.start} ~ {args.end} 无数据，无法回测", file=sys.stderr)
+        return 1
+    dividends = fetch_dividends(args.symbol)
+    cfg = _load_json(args.config)
+    if args.strategy == "dca":
+        result = dca_dividend_combo(DcaConfig.from_dict(cfg), bars, dividends)
+        name = "定投"
+    else:
+        result = grid_dividend_combo(GridConfig.from_dict(cfg), bars, dividends)
+        name = "网格"
+    print(render_combo_summary(result, symbol=args.symbol, strategy=name,
+                               start=args.start, end=args.end))
+    return 0
 
 
 def _split(text: str | None) -> tuple[str, ...]:
