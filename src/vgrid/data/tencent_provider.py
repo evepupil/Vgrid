@@ -14,6 +14,7 @@ hfq / 不复权，ETF 友好（akshare 没封装腾讯 ETF，自己对接）。
 
 from __future__ import annotations
 
+import warnings
 from datetime import date
 
 import requests
@@ -69,7 +70,17 @@ class TencentProvider:
         payload = resp.json()
         data = payload.get("data", {}).get(code, {})
         key = _ADJUST_KEY[self._adjust]
-        rows = data.get(key) or data.get("day") or []
+        rows = data.get(key)
+        if not rows:
+            # 请求前复权 / 后复权但该 key 缺 / 空：有不复权 day 时别静默拿它顶替（会把原始价
+            # 当复权价、再和别处 qfq 缓存错位叠加），告警并按无数据处理（review #29）。
+            if self._adjust and data.get("day"):
+                warnings.warn(
+                    f"{code} 腾讯未返回 {self._adjust} 数据（{key} 缺 / 空），"
+                    "不静默退回不复权，按无数据处理",
+                    stacklevel=2,
+                )
+            return []
         return [list(r) for r in rows]
 
 

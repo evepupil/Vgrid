@@ -12,7 +12,8 @@ from vgrid.web import create_app
 
 
 def _client(tmp_path: Path) -> TestClient:
-    return TestClient(create_app(strategies_dir=tmp_path))
+    # data_dir 也指到 tmp_path，部署 / 实例检测都在临时目录内，测试互不干扰。
+    return TestClient(create_app(strategies_dir=tmp_path, data_dir=tmp_path))
 
 
 def _config() -> dict[str, object]:
@@ -76,6 +77,20 @@ def test_put_updates(tmp_path: Path) -> None:
     r = client.put("/api/strategies/a", json=cfg)
     assert r.status_code == 200
     assert r.json()["grid_count"] == 32
+
+
+def test_put_rejected_when_deployed(tmp_path: Path) -> None:
+    """已部署成实例的策略改配置被拒 409（review #25），配置不被改。"""
+    client = _client(tmp_path)
+    client.post("/api/strategies", json={"name": "a", "config": _config()})
+    assert client.post("/api/strategies/a/deploy", json={"mode": "sim"}).status_code == 200
+
+    cfg = _config()
+    cfg["grid_count"] = 32
+    r = client.put("/api/strategies/a", json=cfg)
+    assert r.status_code == 409
+    assert "先停" in r.json()["detail"]
+    assert client.get("/api/strategies/a").json()["grid_count"] == 16
 
 
 def test_delete(tmp_path: Path) -> None:

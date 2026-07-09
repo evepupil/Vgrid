@@ -107,6 +107,24 @@ def test_fetch_sh_prefix_for_sh_etf(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["params"]["param"].startswith("sh510300,day")
 
 
+def test_qfq_missing_warns_no_silent_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """请求 qfq 但只回不复权 day：不静默顶替，告警 + 空（review #29）。"""
+    day_only = {
+        "code": 0,
+        "data": {"sz159920": {"day": [["2024-01-02", "1.0", "1.0", "1.0", "1.0", "100"]]}},
+    }
+
+    def _fake(url: str, params: dict[str, Any], timeout: int) -> _FakeResp:
+        return _FakeResp(day_only)
+
+    monkeypatch.setattr("vgrid.data.tencent_provider.requests.get", _fake)
+    with pytest.warns(UserWarning, match="不静默退回不复权"):
+        series = TencentProvider(adjust="qfq").fetch(
+            "159920", date(2024, 1, 2), date(2024, 1, 3), Frame.DAILY
+        )
+    assert series.bars == ()
+
+
 def test_fetch_rejects_minute_frame() -> None:
     prov = TencentProvider()
     with pytest.raises(ValueError, match="只支持日线"):

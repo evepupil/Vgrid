@@ -97,7 +97,11 @@
 
 **建议**：GET 不该有建库副作用；校验 `db` 路径在允许目录内、拒绝不存在文件（要建库走显式 POST/部署接口）。
 
-### 25. 改了运行中策略的配置会静默脱节，且没有重部署路径（中）
+### 25. 改了运行中策略的配置会静默脱节，且没有重部署路径（中）—— ✅ 已解决（2026-07-09）
+
+> 取方案 A：`strategy_deploy.deployed_modes` 查 `paper/<mode>/<name>.sqlite` 是否已部署，
+> `routes/strategies.py` 的 PUT 若已部署回 **409「先停并删除实例再改配置」**，不让文件 / DB / 内存脱节。
+> 未提供 stop/redeploy 接口（要改就删实例再重部署）。测试 `test_put_rejected_when_deployed`。
 
 **位置**：`src/vgrid/web/strategy_deploy.py:87-125`、`paper/runner.py:62-63`
 
@@ -129,7 +133,11 @@
 
 **建议**：`_ensure` 套 try，失败时用旧缓存或返 None；过滤 NaN/空名称再入缓存。
 
-### 29. 腾讯 qfq 在 qfqday 缺/空时静默退回 day（不复权）（中）
+### 29. 腾讯 qfq 在 qfqday 缺/空时静默退回 day（不复权）（中）—— ✅ 已解决（2026-07-09）
+
+> `_fetch_segment` 改成只取请求的 key；缺 / 空时若有不复权 `day` 就 `warnings.warn`
+> 「不静默退回不复权，按无数据处理」并返回空，不再拿原始价冒充复权价。
+> 测试 `test_qfq_missing_warns_no_silent_fallback`。
 
 **位置**：`src/vgrid/data/tencent_provider.py:72`
 

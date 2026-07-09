@@ -84,6 +84,17 @@ def enrich_strategies(
     return out
 
 
+def deployed_modes(
+    data_dir: Path, name: str, modes: tuple[str, ...] = ("live", "sim")
+) -> list[str]:
+    """该策略在哪些 mode 下已部署成实例（``paper/<mode>/<name>.sqlite`` 存在）。
+
+    改运行中策略的配置前用它拦一道（review #25）：实例的 config 已冻在 DB / 内存引擎里，
+    再改 ``strategies/`` 文件会让文件、DB、内存三者脱节。
+    """
+    return [m for m in modes if (data_dir / "paper" / m / f"{name}.sqlite").exists()]
+
+
 def deploy_strategy(
     strategies_dir: Path, paper_dir: Path, name: str, *, mode: str = "sim"
 ) -> DeployResult:

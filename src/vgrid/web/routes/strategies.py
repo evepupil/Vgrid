@@ -14,6 +14,7 @@ from vgrid.web.strategy_deploy import (
     EnrichedStrategy,
     InstanceRef,
     deploy_strategy,
+    deployed_modes,
     enrich_strategies,
 )
 from vgrid.web.strategy_store import (
@@ -79,6 +80,13 @@ def create(body: StrategyBody, request: Request) -> dict[str, object]:
 
 @router.put("/{name}")
 def update(name: str, body: dict[str, object], request: Request) -> dict[str, object]:
+    # 已部署成实例的策略不让改配置：DB / 内存引擎里冻着旧 config，改文件会三者脱节（review #25）。
+    deployed = deployed_modes(Path(request.app.state.data_dir), name)
+    if deployed:
+        raise HTTPException(
+            status_code=409,
+            detail=f"策略 {name} 已部署为实例（{'/'.join(deployed)}），先停并删除实例再改配置",
+        )
     try:
         write_strategy(_dir(request), name, body)
     except (ValueError, KeyError) as exc:
