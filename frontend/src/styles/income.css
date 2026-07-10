@@ -95,3 +95,41 @@
   border-radius: 4px;
   padding: 8px;
 }
+
+/* 增强回测：策略 vs 分红再投 两曲线 + 分红贡献 KPI 行 */
+.inc-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.inc-kpi__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.inc-kpi__label {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+.inc-kpi__value {
+  font-family: var(--font-m);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.inc-kpi__value.up {
+  color: var(--up);
+}
+.inc-kpi__value.down {
+  color: var(--down);
+}
+
+@media (max-width: 860px) {
+  .inc-kpi {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

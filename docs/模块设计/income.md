@@ -95,6 +95,11 @@ CLI：`vgrid income compare`（横向对比）、`vgrid income enhance`（单只
     累计净值四口径 + 分红率 + 数据质量；分红源对真红利 ETF 覆盖到位。
   - **取舍**：费用第一版 unknown（无可用 ETF 费率源）；取不到分红的 ETF 靠累计净值参与排名；
     新浪分红备源 + 缓存分红 / 净值（按日 / 按 ETF）留作后续优化（日线已缓存、per-ETF 抓取够快）。
+- **2026-07-10（M7 深化 · 增强回测上网页）**：`POST /api/income/enhance`（`web/income_api.run_income_enhance`
+  + `routes/income.enhance`，复用 `service.build_enhance`，两条曲线降采样到 300 点）+ 前端 Income 页加
+  「红利对比 / 增强回测」Tab：增强 Tab 选策略（定投复用 DcaForm compact / 网格从策略库）→ KPI 行
+  （策略收益 / 增强 / 分红贡献 / 累计到账分红）+ `EnhanceChart`（策略灰虚 vs 增强模式色实线）。
+  端到端实测 510880 月定投 2021–2024：策略 11.79% → 增强 18.68%、分红贡献 +6.89%。API 单测 2 例。
 - **2026-07-09（M7 深化 · 红利增强组合回测）**：`combo.py` 把「分红再投」叠到任意策略上——
   策略在**不复权**价上跑（除权日真跌），从其逐 bar 权益反推持仓份额（`position_value/close`），
   按持仓在发放日收分红、下一开盘再投（口径「再投」，扣费、买不满一手留现金），**不改 DCA/网格引擎**。

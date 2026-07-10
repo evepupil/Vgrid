@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -15,7 +16,7 @@ from pydantic import BaseModel
 from vgrid.income.report import DEFAULT_SORT
 from vgrid.income.service import IncomeCompareSpec
 from vgrid.income.universe import DEFAULT_KEYWORDS
-from vgrid.web.income_api import run_income_compare
+from vgrid.web.income_api import run_income_compare, run_income_enhance
 
 router = APIRouter(prefix="/api/income", tags=["income"])
 
@@ -46,3 +47,26 @@ def compare(body: IncomeCompareBody) -> dict[str, object]:
         sort_keys=DEFAULT_SORT,
     )
     return run_income_compare(spec)
+
+
+class IncomeEnhanceBody(BaseModel):
+    symbol: str
+    start: date
+    end: date
+    strategy: Literal["dca", "grid"]
+    config: dict[str, object]  # dca=DcaConfig / grid=GridConfig 的 to_dict 格式
+
+
+@router.post("/enhance")
+def enhance(body: IncomeEnhanceBody) -> dict[str, object]:
+    """单只红利 ETF：策略 + 分红再投增强，返策略 / 增强两条净值曲线 + 分红贡献。"""
+    try:
+        return run_income_enhance(
+            symbol=body.symbol,
+            start=body.start,
+            end=body.end,
+            strategy=body.strategy,
+            config=body.config,
+        )
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

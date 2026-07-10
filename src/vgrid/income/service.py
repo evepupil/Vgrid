@@ -11,10 +11,13 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from vgrid.core.bar import Bar
+from vgrid.core.bar import Bar, BarSeries
+from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.core.fees import FeeModel
 from vgrid.data.loader import load_bars
+from vgrid.dca.config import DcaConfig
+from vgrid.income.combo import ComboResult, dca_dividend_combo, grid_dividend_combo
 from vgrid.income.dividends import fetch_dividends
 from vgrid.income.expenses import fetch_expenses
 from vgrid.income.models import DividendEvent, ExpenseInfo, NavPoint
@@ -115,3 +118,26 @@ def build_comparison(
         skipped=skipped,
         spec=spec,
     )
+
+
+def build_enhance(
+    *,
+    symbol: str,
+    start: date,
+    end: date,
+    strategy: str,
+    config: dict[str, object],
+    bars_fn: BarSource = _default_bars,
+    dividends_fn: DividendSource = fetch_dividends,
+) -> ComboResult:
+    """单只红利 ETF：跑策略（定投 / 网格）+ 分红再投增强。bars 走不复权价。"""
+    bars_list = bars_fn(symbol, start, end)
+    if not bars_list:
+        raise ValueError(f"{symbol} 在 {start} ~ {end} 无日线数据")
+    bars = BarSeries(symbol=symbol, frame=Frame.DAILY, bars=tuple(bars_list))
+    dividends = dividends_fn(symbol)
+    if strategy == "dca":
+        return dca_dividend_combo(DcaConfig.from_dict(config), bars, dividends)
+    if strategy == "grid":
+        return grid_dividend_combo(GridConfig.from_dict(config), bars, dividends)
+    raise ValueError(f"未知策略：{strategy}（可选 dca / grid）")

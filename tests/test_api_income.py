@@ -91,3 +91,52 @@ def test_income_compare_invalid_cash(monkeypatch: pytest.MonkeyPatch) -> None:
         json={"start": "2024-01-01", "end": "2025-01-01", "initial_cash": "abc"},
     )
     assert r.status_code == 400
+
+
+def _fake_combo() -> SimpleNamespace:
+    return SimpleNamespace(
+        strategy_return=Decimal("0.1179"),
+        enhanced_return=Decimal("0.1868"),
+        dividend_boost=Decimal("0.0689"),
+        dividend_cash_total=Decimal("6003.40"),
+        reinvest_shares=1900,
+        strategy_curve=_curve(),
+        enhanced_curve=_curve(),
+    )
+
+
+def test_income_enhance_returns_two_curves(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "vgrid.web.income_api.build_enhance", lambda **kw: _fake_combo()
+    )
+    client = TestClient(create_app())
+    r = client.post(
+        "/api/income/enhance",
+        json={
+            "symbol": "510880",
+            "start": "2021-01-01",
+            "end": "2024-12-31",
+            "strategy": "dca",
+            "config": {"symbol": "510880"},
+        },
+    )
+    assert r.status_code == 200
+    j = r.json()
+    assert j["dividend_boost"] == "0.0689"
+    assert j["reinvest_shares"] == 1900
+    assert len(j["strategy_curve"]) <= 300
+    assert len(j["enhanced_curve"]) == len(j["strategy_curve"])
+
+
+def test_income_enhance_rejects_bad_strategy(monkeypatch: pytest.MonkeyPatch) -> None:
+    r = TestClient(create_app()).post(
+        "/api/income/enhance",
+        json={
+            "symbol": "510880",
+            "start": "2021-01-01",
+            "end": "2024-12-31",
+            "strategy": "bogus",
+            "config": {},
+        },
+    )
+    assert r.status_code == 422  # Literal 校验挡下

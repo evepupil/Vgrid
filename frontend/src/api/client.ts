@@ -270,6 +270,29 @@ export async function runIncomeCompare(body: IncomeCompareBody): Promise<IncomeC
   return post<IncomeCompareResult>('/api/income/compare', body)
 }
 
+// 红利增强回测（M7 深化）：单只 ETF 策略(定投/网格) + 分红再投，两条净值曲线 + 分红贡献
+export interface IncomeEnhanceResult {
+  strategy_return: string // 价格口径（不含分红）
+  enhanced_return: string // 分红再投增强
+  dividend_boost: string // 增强 − 策略
+  dividend_cash_total: string // 期间累计到账分红现金
+  reinvest_shares: number // 分红再投累计买入份额
+  strategy_curve: IncomeCurvePoint[]
+  enhanced_curve: IncomeCurvePoint[]
+}
+
+export interface IncomeEnhanceBody {
+  symbol: string
+  start: string
+  end: string
+  strategy: 'dca' | 'grid'
+  config: Record<string, unknown>
+}
+
+export async function runIncomeEnhance(body: IncomeEnhanceBody): Promise<IncomeEnhanceResult> {
+  return post<IncomeEnhanceResult>('/api/income/enhance', body)
+}
+
 // 参数扫描（FR-8）
 export type ScanMetric = 'sharpe' | 'total_return' | 'annualized_return' | 'calmar'
 

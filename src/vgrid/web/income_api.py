@@ -6,17 +6,48 @@
 
 from __future__ import annotations
 
+from datetime import date
+
+from vgrid.income.combo import ComboResult
 from vgrid.income.report import EtfIncomeResult
 from vgrid.income.series import SeriesPoint
-from vgrid.income.service import IncomeCompareRun, IncomeCompareSpec, build_comparison
+from vgrid.income.service import (
+    IncomeCompareRun,
+    IncomeCompareSpec,
+    build_comparison,
+    build_enhance,
+)
 from vgrid.web.curve import downsample
 
 _CURVE_POINTS = 100  # 批量 ETF × 4 曲线，降采样狠点省带宽
+_ENHANCE_POINTS = 300  # 单只两条曲线，可细一点
 
 
 def run_income_compare(spec: IncomeCompareSpec) -> dict[str, object]:
     """跑红利对比，返 JSON dict（池规模 + 跳过 + 排序键 + rows[metrics + 四曲线]）。"""
     return _run_to_dict(build_comparison(spec))
+
+
+def run_income_enhance(
+    *, symbol: str, start: date, end: date, strategy: str, config: dict[str, object]
+) -> dict[str, object]:
+    """单只红利 ETF：策略 + 分红再投增强，返两条曲线 + 分红贡献。"""
+    result = build_enhance(
+        symbol=symbol, start=start, end=end, strategy=strategy, config=config
+    )
+    return _combo_to_dict(result)
+
+
+def _combo_to_dict(r: ComboResult) -> dict[str, object]:
+    return {
+        "strategy_return": str(r.strategy_return),
+        "enhanced_return": str(r.enhanced_return),
+        "dividend_boost": str(r.dividend_boost),
+        "dividend_cash_total": str(r.dividend_cash_total),
+        "reinvest_shares": r.reinvest_shares,
+        "strategy_curve": _curve(r.strategy_curve, _ENHANCE_POINTS),
+        "enhanced_curve": _curve(r.enhanced_curve, _ENHANCE_POINTS),
+    }
 
 
 def _run_to_dict(run: IncomeCompareRun) -> dict[str, object]:
@@ -65,7 +96,7 @@ def _row_to_dict(r: EtfIncomeResult) -> dict[str, object]:
     }
 
 
-def _curve(points: list[SeriesPoint]) -> list[dict[str, object]]:
-    """降采样到 ``_CURVE_POINTS``，转 ``{day, value}``（value 是累计收益率，起点=0）。"""
-    sampled, _ = downsample(points, _CURVE_POINTS)
+def _curve(points: list[SeriesPoint], n: int = _CURVE_POINTS) -> list[dict[str, object]]:
+    """降采样到 ``n`` 点，转 ``{day, value}``（value 是累计收益率，起点=0）。"""
+    sampled, _ = downsample(points, n)
     return [{"day": p.day.isoformat(), "value": str(p.value)} for p in sampled]
