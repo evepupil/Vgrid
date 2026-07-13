@@ -16,13 +16,17 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import sys
 from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
 
 from vgrid.backtest import simulate
 from vgrid.backtest.compare import compare_strategies
@@ -59,6 +63,9 @@ from vgrid.web import create_app
 #: 文件缺失 / 网络中断（OSError，requests 异常也归此类）。这些打一行人话就退 1；
 #: 其余未预期异常放行 traceback，方便定位真 bug。
 _KNOWN_ERRORS = (ValueError, KeyError, OSError)
+
+#: 扫描热力图只能画二维（x/y 两个扫描维度），别的维度数出图没法画。
+_SCAN_CHART_DIMS = 2
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -112,6 +119,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="初始资金（默认用配置的 capital_cap）",
     )
+    p_bt.add_argument("--chart", action="store_true", help="额外出可分享 PNG（净值+回撤+买卖点）")
 
     p_dca = sub.add_parser("dca", help="下载行情 → 跑定投回测 → 输出报告")
     _add_data_args(p_dca)
@@ -129,6 +137,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="三方共同起始现金（默认取网格 capital_cap，否则定投 cash_cap）",
     )
     p_cmp.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+    p_cmp.add_argument("--chart", action="store_true", help="额外出一张可分享 PNG（三方净值叠加）")
 
     p_scan = sub.add_parser("scan", help="网格搜索参数扫描")
     _add_data_args(p_scan)
@@ -141,6 +150,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_scan.add_argument("--top", type=int, default=10, help="终端 / 报告展示的 top-N")
     p_scan.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+    p_scan.add_argument("--chart", action="store_true",
+                        help="额外出一张可分享 PNG 热力图（需恰好 2 个扫描维度）")
     p_scan.add_argument(
         "--initial-cash",
         type=Decimal,
@@ -196,6 +207,8 @@ def _add_income_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser])
     p.add_argument("--sort", default=None, help="排序键，逗号分隔（默认再投年化优先）")
     p.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
     p.add_argument("--format", default="markdown,csv", help="输出格式，逗号分隔：markdown,csv")
+    p.add_argument("--chart", action="store_true", help="给排名靠前的 ETF 各出一张四口径 PNG")
+    p.add_argument("--chart-top", type=int, default=3, help="出图的 ETF 数量（默认前 3）")
 
     pe = income_sub.add_parser("enhance", help="单只红利 ETF：策略(定投/网格) + 分红再投增强对照")
     pe.add_argument("--symbol", required=True, help="标的代码，如 510880")
@@ -205,7 +218,9 @@ def _add_income_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser])
     pe.add_argument(
         "--config", type=Path, required=True, help="策略配置 JSON（DcaConfig / GridConfig）",
     )
+    pe.add_argument("--out", type=Path, default=Path("reports"), help="分享图输出目录")
     pe.add_argument("--refresh", action="store_true", help="强制重新下载不复权日线")
+    pe.add_argument("--chart", action="store_true", help="额外出一张可分享 PNG（策略 vs 分红再投）")
 
 
 def _add_data_args(p: argparse.ArgumentParser) -> None:
@@ -249,6 +264,11 @@ def _cmd_backtest(args: argparse.Namespace) -> int:
     print(render_summary(result, config))
     out_path = _write_report(render_report(result, config), args.out, args.symbol, args.frame)
     print(f"\n完整报告：{out_path}")
+    if args.chart:
+        from vgrid.charts import render_backtest_chart  # noqa: PLC0415
+
+        _save_chart(lambda: render_backtest_chart(result, symbol=args.symbol),
+                    args.out, f"{args.symbol}_backtest")
     return 0
 
 
@@ -289,6 +309,10 @@ def _cmd_compare(args: argparse.Namespace) -> int:
     report = render_comparison_report(comparison)
     out_path = _write_report(report, args.out, f"{args.symbol}_compare", args.frame)
     print(f"\n完整报告：{out_path}")
+    if args.chart:
+        from vgrid.charts import render_compare_chart  # noqa: PLC0415
+
+        _save_chart(lambda: render_compare_chart(comparison), args.out, f"{args.symbol}_compare")
     return 0
 
 
@@ -331,6 +355,15 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     )
     print(f"\n扫描报告：{scan_path}")
     print(f"最优组合完整报告：{best_path}")
+
+    if args.chart:
+        if len(spec.vary) != _SCAN_CHART_DIMS:
+            print(f"热力图需恰好 2 个扫描维度，当前 {len(spec.vary)} 个，跳过出图", file=sys.stderr)
+        else:
+            from vgrid.charts import render_scan_heatmap  # noqa: PLC0415
+
+            _save_chart(lambda: render_scan_heatmap(list(rows), metric=args.metric, spec=spec),
+                        args.out, f"scan_{args.symbol}")
     return 0
 
 
@@ -361,6 +394,12 @@ def _cmd_income_enhance(args: argparse.Namespace) -> int:
         name = "网格"
     print(render_combo_summary(result, symbol=args.symbol, strategy=name,
                                start=args.start, end=args.end))
+    if args.chart:
+        from vgrid.charts import render_enhance_chart  # noqa: PLC0415
+
+        args.out.mkdir(parents=True, exist_ok=True)
+        _save_chart(lambda: render_enhance_chart(result, symbol=args.symbol, strategy=name),
+                    args.out, f"{args.symbol}_enhance")
     return 0
 
 
@@ -398,6 +437,13 @@ def _cmd_income_compare(args: argparse.Namespace) -> int:
         csv_path = args.out / "income_compare.csv"
         csv_path.write_text(render_income_csv(run), encoding="utf-8")
         print(f"CSV 报告：{csv_path}")
+    if args.chart:
+        from vgrid.charts import render_income_chart  # noqa: PLC0415
+
+        # 给排名前 N 只各出一张四口径图（默认前 3，池小则全出）。
+        for etf in run.comparison.results[: args.chart_top]:
+            _save_chart(functools.partial(render_income_chart, etf), args.out,
+                        f"income_{etf.code}")
     return 0
 
 
@@ -482,6 +528,14 @@ def _write_report(text: str, out_dir: Path, symbol: str, frame: str) -> Path:
     path = out_dir / f"{symbol}_{frame}.md"
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def _save_chart(render: Callable[[], Figure], out_dir: Path, name: str) -> None:
+    """跑一个图渲染 thunk 并存 PNG。matplotlib 懒导入（只在 --chart 时才拉）。"""
+    from vgrid.charts import save_png  # noqa: PLC0415  懒导入，不带 --chart 就不碰 matplotlib
+
+    path = save_png(render(), out_dir / f"{name}.png")
+    print(f"分享图：{path}")
 
 
 if __name__ == "__main__":
