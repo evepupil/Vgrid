@@ -11,7 +11,9 @@ from datetime import date
 from vgrid.core.enums import Frame
 from vgrid.data.loader import load_bars
 
-bars = load_bars("510880", date(2017, 1, 1), date(2026, 7, 12), Frame.DAILY, adjust="qfq").bars
+series = load_bars("510880", date(2017, 1, 1), date(2026, 7, 12), Frame.DAILY, adjust="qfq")
+bars = series.bars  # tuple[Bar]：需要 list[Bar] 的接口（如 build_etf_result）用这个
+# ⚠️ run_dca 等引擎要整个 series（BarSeries），别只传 series.bars
 # adjust: "qfq"=前复权(含分红再投，算总收益用) / ""=不复权(算纯价格变动、股息率分母用)
 # Bar 字段: ts / open / high / low / close / volume
 ```
@@ -50,7 +52,7 @@ config = DcaConfig(
     symbol="510880", frequency=Frequency.MONTHLY,
     base_amount=Decimal("2000"), cash_cap=Decimal("50000"), day_of_month=15,
 )
-result = run_dca(config, bars)
+result = run_dca(config, series)  # 传 BarSeries，不是 series.bars
 # result.metrics 含: xirr / buy_hold_return(全仓对照) / max_drawdown / invested_amount / n_buys
 ```
 
@@ -58,7 +60,11 @@ result = run_dca(config, bars)
 
 ```python
 from vgrid.income.report import build_etf_result
-result = build_etf_result(code, name, bars, dividends, navs, expenses, initial_cash, lot_size, fee)
+# 签名是 keyword-only（*,），必须用关键字；bars 这里要 list[Bar]，传 series.bars
+result = build_etf_result(
+    code=code, name=name, bars=series.bars, dividends=dividends, navs=navs,
+    expenses=expenses, initial_cash=initial_cash, lot_size=lot_size, fee=fee,
+)
 # 含 price_curve / cash_dividend_curve / reinvest_curve / acc_nav_curve + metrics
 ```
 
@@ -76,6 +82,27 @@ from vgrid.income.combo import dca_dividend_combo, grid_dividend_combo
 - **TTM 股息率**：近 12 月每股分红 ÷ 当前价。
 
 ## 生图
+
+### CLI 快捷出图（六张标准图，优先用）
+
+要的是标准图时，直接给 CLI 命令加 `--chart`，比手写 matplotlib 快。图落 `--out`（默认 `reports/`，白底 160 DPI PNG）：
+
+```bash
+# 回测主图（净值 + 买卖点 + 回撤）
+uv run vgrid backtest --symbol 510880 --start 2017-01-01 --end 2024-12-31 --chart
+# 三方对比（网格/定投/买入持有）——须至少给 --dca-config 或 --grid-config 之一
+uv run vgrid compare  --symbol 510880 --start 2017-01-01 --end 2024-12-31 --dca-config dca.json --chart
+# 红利四口径（前 N 只各一张）
+uv run vgrid income compare --start 2018-01-01 --end 2024-12-31 --chart --chart-top 3
+# 红利增强（策略 vs 分红再投）
+uv run vgrid income enhance --symbol 510880 --start 2018-01-01 --end 2024-12-31 --strategy dca --chart
+# 扫描热力图（扫描规格须恰好 2 个 vary 维度，否则跳过不出图）
+uv run vgrid scan --symbol 510880 --start 2017-01-01 --end 2024-12-31 --spec spec.json --chart
+```
+
+网格阶梯图（`render_ladder_chart`）CLI 没接，只能代码调。自定义图 / 项目没有的新图，走下面的 `_style` 手动组装。
+
+### 自定义图（手动组装）
 
 统一用 `vgrid.charts._style` 样式系统，别自己配 matplotlib rcParams。
 
