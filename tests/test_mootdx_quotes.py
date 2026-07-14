@@ -96,3 +96,13 @@ def test_names_merges_both_markets(monkeypatch: pytest.MonkeyPatch) -> None:
     names = MootdxQuotes().names()
     assert names["159920"] == "恒生ETF"
     assert names["510300"] == "沪深300ETF"
+
+
+def test_names_strips_control_chars(monkeypatch: pytest.MonkeyPatch) -> None:
+    # mootdx 部分标的名带尾部 \x00（字体渲染成缺字方块），须清掉；首尾空白也 strip。
+    sz = pd.DataFrame({"code": ["510880"], "name": ["红利ETF\x00"]})
+    sh = pd.DataFrame({"code": ["515080"], "name": ["  中证红利 "]})
+    _patch(monkeypatch, _FakeClient(stocks={0: sz, 1: sh}))
+    names = MootdxQuotes().names()
+    assert names["510880"] == "红利ETF"
+    assert names["515080"] == "中证红利"

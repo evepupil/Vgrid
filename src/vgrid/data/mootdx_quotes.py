@@ -58,10 +58,15 @@ class MootdxQuotes:
                 continue
             for row in df.to_dict("records"):
                 code = str(row.get("code", "")).zfill(6)
-                name = str(row.get("name", "")).strip()
+                name = _clean_name(str(row.get("name", "")))
                 if code and name:
                     out[code] = name
         return out
+
+
+def _clean_name(raw: str) -> str:
+    """清掉名称里的控制字符（mootdx 部分标的名带尾部 \\x00，字体渲染成缺字方块）后 strip。"""
+    return "".join(ch for ch in raw if ch >= " ").strip()
 
 
 def _row_to_snapshot(code: str, row: dict[str, object]) -> Snapshot:
