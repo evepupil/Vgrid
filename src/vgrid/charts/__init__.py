@@ -21,6 +21,7 @@ from vgrid.charts._style import (
     xdates,
 )
 from vgrid.charts.backtest_chart import render_backtest_chart
+from vgrid.charts.batch_chart import render_batch_chart
 from vgrid.charts.compare_chart import render_compare_chart
 from vgrid.charts.enhance_chart import render_enhance_chart
 from vgrid.charts.income_chart import render_income_chart
@@ -37,6 +38,7 @@ __all__ = [
     "kpi_strip",
     "pct_formatter",
     "render_backtest_chart",
+    "render_batch_chart",
     "render_compare_chart",
     "render_enhance_chart",
     "render_income_chart",

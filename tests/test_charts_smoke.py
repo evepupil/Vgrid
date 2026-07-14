@@ -16,8 +16,10 @@ from matplotlib.figure import Figure
 
 from vgrid.backtest.compare import compare_strategies
 from vgrid.backtest.matcher import simulate_with_engine
+from vgrid.batch.models import BatchResult, BatchRow
 from vgrid.charts import (
     render_backtest_chart,
+    render_batch_chart,
     render_compare_chart,
     render_enhance_chart,
     render_income_chart,
@@ -115,6 +117,21 @@ def test_scan_heatmap(tmp_path: Path) -> None:
     rows = run_scan(spec.expand(), _series(), initial_cash=Decimal("50000"))
     fig = render_scan_heatmap(list(rows), metric="sharpe", spec=spec)
     _assert_png(fig, tmp_path, "scan.png")
+
+
+def test_batch_chart(tmp_path: Path) -> None:
+    rows = (
+        BatchRow(code="510880", name="红利ETF", ok=True, dca_xirr=Decimal("0.11"),
+                 dca_return=Decimal("0.37"), dca_max_drawdown=Decimal("0.14"),
+                 buy_hold_return=Decimal("0.96"), n_buys=71),
+        BatchRow(code="515180", name="红利低波", ok=True, dca_xirr=Decimal("0.08"),
+                 dca_return=Decimal("0.22"), dca_max_drawdown=Decimal("0.19"),
+                 buy_hold_return=Decimal("0.40"), n_buys=71),
+        BatchRow.failed("000000", "缺数据", "无行情数据"),
+    )
+    result = BatchResult(rows=rows, start="2019-01-01", end="2024-12-31",
+                         frame="daily", sort_key="xirr")
+    _assert_png(render_batch_chart(result), tmp_path, "batch.png")
 
 
 def test_cli_save_chart_writes_png(tmp_path: Path) -> None:

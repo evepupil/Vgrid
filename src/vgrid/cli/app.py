@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 from vgrid.backtest import simulate
 from vgrid.backtest.compare import compare_strategies
+from vgrid.batch import SORT_CHOICES, run_batch
 from vgrid.core.config import GridConfig
 from vgrid.core.enums import Frame
 from vgrid.data import load_bars
@@ -49,6 +50,7 @@ from vgrid.report import (
     render_report,
     render_summary,
 )
+from vgrid.report.batch import render_batch_report, render_batch_summary
 from vgrid.report.income import (
     render_combo_summary,
     render_income_csv,
@@ -81,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         "scan": _cmd_scan,
         "backtest": _cmd_backtest,
         "income": _cmd_income,
+        "batch": _cmd_batch,
     }
     return _guard(handlers[args.command], args)
 
@@ -159,6 +162,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="初始资金（默认用配置的 capital_cap）",
     )
 
+    _add_batch_parser(sub)
+
     _add_income_parser(sub)
 
     p_paper = sub.add_parser("paper", help="模拟盘（实时轮询 + 虚拟账户）")
@@ -190,6 +195,24 @@ def _build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", default="127.0.0.1", help="监听地址")
     p_serve.add_argument("--port", type=int, default=8000, help="监听端口")
     return parser
+
+
+def _add_batch_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    p = sub.add_parser("batch", help="多标的批量回测：同一定投配置跑一串 ETF，排名对比")
+    p.add_argument("--symbols", required=True,
+                   help="标的代码，逗号分隔，如 510880,515180,563020")
+    p.add_argument("--start", type=_parse_date, required=True, help="起始日期 YYYY-MM-DD")
+    p.add_argument("--end", type=_parse_date, required=True, help="结束日期 YYYY-MM-DD")
+    p.add_argument("--config", type=Path, required=True,
+                   help="定投配置 JSON（symbol 逐只自动替换）")
+    p.add_argument("--sort", choices=list(SORT_CHOICES), default="xirr", help="排序指标")
+    p.add_argument("--frame", choices=[f.value for f in Frame],
+                   default=Frame.DAILY.value, help="K 线周期")
+    p.add_argument("--out", type=Path, default=Path("reports"), help="报告输出目录")
+    p.add_argument("--format", default="markdown", help="输出格式，逗号分隔：markdown")
+    p.add_argument("--chart", action="store_true",
+                   help="额外出一张可分享 PNG（定投 vs 一次性 排名条形图）")
+    p.add_argument("--refresh", action="store_true", help="强制重新下载，忽略缓存")
 
 
 def _add_income_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -365,6 +388,50 @@ def _cmd_scan(args: argparse.Namespace) -> int:
             _save_chart(lambda: render_scan_heatmap(list(rows), metric=args.metric, spec=spec),
                         args.out, f"scan_{args.symbol}")
     return 0
+
+
+def _cmd_batch(args: argparse.Namespace) -> int:
+    frame = Frame(args.frame)
+    codes = _split(args.symbols)
+    if not codes:
+        print("未指定标的（--symbols）", file=sys.stderr)
+        return 1
+    config = DcaConfig.from_dict(_load_json(args.config))
+    names = _best_effort_names()
+
+    def _progress(done: int, total: int, code: str) -> None:
+        print(f"  [{done}/{total}] {code}…", file=sys.stderr)
+
+    result = run_batch(
+        list(codes), config, start=args.start, end=args.end, frame=frame,
+        names=names, sort_key=args.sort, refresh=args.refresh, on_progress=_progress,
+    )
+    if not result.ok_rows:
+        print("没有一只跑成（全部无数据或回测失败）", file=sys.stderr)
+        return 1
+
+    print(render_batch_summary(result))
+    formats = _split(args.format)
+    args.out.mkdir(parents=True, exist_ok=True)
+    if "markdown" in formats:
+        md = args.out / "batch.md"
+        md.write_text(render_batch_report(result), encoding="utf-8")
+        print(f"\nMarkdown 报告：{md}")
+    if args.chart:
+        from vgrid.charts import render_batch_chart  # noqa: PLC0415
+
+        _save_chart(lambda: render_batch_chart(result), args.out, "batch_ranking")
+    return 0
+
+
+def _best_effort_names() -> dict[str, str]:
+    """尽力拉「代码→名称」名录，拉不到就返回空（报表里用代码兜底）。"""
+    from vgrid.data.mootdx_quotes import MootdxQuotes  # noqa: PLC0415  懒导入，避免连 mootdx
+
+    try:
+        return MootdxQuotes().names()
+    except OSError:
+        return {}
 
 
 def _cmd_income(args: argparse.Namespace) -> int:
