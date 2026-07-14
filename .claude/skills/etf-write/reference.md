@@ -41,6 +41,23 @@ navs = fetch_navs("510880", start, end)  # list[NavPoint]: day/unit_nav/acc_nav
 
 ## 回测能力
 
+### 多标的批量回测（同一定投配置跑一串 ETF，排名对比）
+
+```python
+from datetime import date
+from vgrid.batch import run_batch  # backtest_one(纯函数) / run_batch(编排)
+
+result = run_batch(
+    ["510880", "515180", "515080", "563020"], config,  # config 同下面的 DcaConfig
+    start=date(2019, 1, 1), end=date(2024, 12, 31),
+    sort_key="xirr",  # xirr / dca_return / buy_hold_return / max_drawdown
+)
+# result.ok_rows：每只的 dca_xirr / dca_return / dca_max_drawdown / buy_hold_return / n_buys
+# result.failed_rows：无数据跳过的（不崩）。一次 run_dca 同时出「定投」和「一次性买入」对照
+```
+CLI：`uv run vgrid batch --symbols 510880,515180 --start ... --end ... --config dca.json --sort xirr --chart`
+（出排名 Markdown + 横向条形图）。**注意**：上市晚的标的区间短（看 `n_buys`），XIRR 别跨区间硬比。
+
 ### 定投 vs 全仓
 
 ```python
